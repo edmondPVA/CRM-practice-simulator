@@ -1,0 +1,1641 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>CRM Practice Simulator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout concept: dark navigation rail + slim top bar + one scrolling work area. Dense SaaS surface, one blue accent, semantic colors kept separate. */
+:root{
+  --font:'Manrope',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --bg:#f1f4f9; --surface:#ffffff; --surface-2:#f6f8fc; --line:#e1e6f0; --line-strong:#c5cde0;
+  --fg:#15203a; --muted:#64708c; --accent:#1c6ef2; --accent-soft:#e4eeff; --accent-fg:#ffffff;
+  --side-bg:#0d1730; --side-fg:#aeb9d4; --side-hover:#16234a; --side-active:#1a2b5c;
+  --good:#10795a; --good-soft:#dff4ea; --warn:#9a5b00; --warn-soft:#fff0d0; --bad:#bf2b37; --bad-soft:#fde6e8;
+  --c1:#1c6ef2; --c2:#0f9d77; --c3:#e08a00; --c4:#8a5cd6; --c5:#d9486b; --c6:#5b6b8c;
+  --shadow:0 1px 2px rgba(16,28,56,.06),0 4px 14px rgba(16,28,56,.06);
+  --shadow-lg:0 10px 40px rgba(10,20,50,.22);
+  --overlay:rgba(8,14,32,.5);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0a0f1f; --surface:#111a31; --surface-2:#16213d; --line:#222f52; --line-strong:#33446e;
+  --fg:#e7ebf6; --muted:#8f9bba; --accent:#4d94ff; --accent-soft:#16294f; --accent-fg:#06112a;
+  --side-bg:#070b18; --side-fg:#9aa7c6; --side-hover:#111a35; --side-active:#16244d;
+  --good:#3fcf9f; --good-soft:#0f2f28; --warn:#f0b04a; --warn-soft:#33270f; --bad:#ff7a85; --bad-soft:#3a1519;
+  --c1:#4d94ff; --c2:#3fcf9f; --c3:#f0b04a; --c4:#b08cf0; --c5:#ff7da0; --c6:#8d9bbd;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.3); --shadow-lg:0 10px 40px rgba(0,0,0,.6); --overlay:rgba(0,0,0,.62);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0a0f1f; --surface:#111a31; --surface-2:#16213d; --line:#222f52; --line-strong:#33446e;
+  --fg:#e7ebf6; --muted:#8f9bba; --accent:#4d94ff; --accent-soft:#16294f; --accent-fg:#06112a;
+  --side-bg:#070b18; --side-fg:#9aa7c6; --side-hover:#111a35; --side-active:#16244d;
+  --good:#3fcf9f; --good-soft:#0f2f28; --warn:#f0b04a; --warn-soft:#33270f; --bad:#ff7a85; --bad-soft:#3a1519;
+  --c1:#4d94ff; --c2:#3fcf9f; --c3:#f0b04a; --c4:#b08cf0; --c5:#ff7da0; --c6:#8d9bbd;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.3); --shadow-lg:0 10px 40px rgba(0,0,0,.6); --overlay:rgba(0,0,0,.62);
+  color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--accent)}
+h1,h2,h3,h4,p{margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ic{flex:none}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.sm{font-size:12px}
+.row{display:flex;align-items:center;gap:8px}
+.row.wrap{flex-wrap:wrap}
+.sp{flex:1}
+.col{display:flex;flex-direction:column;gap:12px}
+.trunc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.hide-sm{}
+/* shell */
+.app{display:grid;grid-template-columns:var(--sw,236px) minmax(0,1fr);height:100vh;height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));transition:grid-template-columns .18s ease}
+.app.collapsed{--sw:68px}
+.side{background:var(--side-bg);color:var(--side-fg);display:flex;flex-direction:column;min-height:0;padding:12px 10px;gap:4px;overflow:hidden;z-index:30}
+.acct{display:flex;align-items:center;gap:10px;width:100%;padding:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);border-radius:10px;color:#fff;text-align:left}
+.acct:hover{background:rgba(255,255,255,.08)}
+.acct-av{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;font-weight:800;color:#fff;flex:none}
+.acct-txt{min-width:0;flex:1}
+.acct-txt b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct-txt span{font-size:11px;color:var(--side-fg)}
+.nav{display:flex;flex-direction:column;gap:2px;margin-top:10px}
+.nav button{display:flex;align-items:center;gap:12px;width:100%;padding:9px 12px;border:0;background:none;color:var(--side-fg);border-radius:8px;text-align:left;font-weight:600;position:relative}
+.nav button:hover{background:var(--side-hover);color:#fff}
+.nav button.on{background:var(--side-active);color:#fff;box-shadow:inset 3px 0 0 var(--accent)}
+.nav .badge{margin-left:auto;background:var(--accent);color:var(--accent-fg);border-radius:99px;font-size:11px;padding:1px 7px;font-weight:700}
+.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:6px}
+.simtag{font-size:11px;line-height:1.35;padding:8px 10px;border-radius:8px;background:rgba(255,200,80,.1);color:#f3c46b;border:1px solid rgba(255,200,80,.18)}
+.collapse-btn{display:flex;align-items:center;gap:12px;padding:8px 12px;border:0;background:none;color:var(--side-fg);border-radius:8px;font-weight:600}
+.collapse-btn:hover{background:var(--side-hover);color:#fff}
+.collapsed .lbl,.collapsed .acct-txt,.collapsed .simtag,.collapsed .nav .badge{display:none}
+.collapsed .nav button,.collapsed .collapse-btn{justify-content:center;padding:10px 0}
+.collapsed .acct{justify-content:center}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.top{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20}
+.top .burger{display:none}
+.gs{position:relative;flex:1;max-width:460px}
+.gs .input{padding-left:34px;background:var(--surface-2)}
+.gs>.ic{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.gs-res{position:absolute;left:0;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);padding:6px;max-height:60vh;overflow:auto;z-index:50}
+.gs-res h5{margin:8px 8px 4px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.gs-res button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:8px;border-radius:8px;text-align:left}
+.gs-res button:hover{background:var(--surface-2)}
+.simpill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:99px;background:var(--warn-soft);color:var(--warn);font-size:12px;font-weight:700;border:0}
+.iconbtn{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:8px;border:1px solid transparent;background:none;color:var(--muted);position:relative}
+.iconbtn:hover{background:var(--surface-2);color:var(--fg)}
+.iconbtn.bd{border-color:var(--line)}
+.iconbtn .dot{position:absolute;top:3px;right:3px;min-width:16px;height:16px;border-radius:99px;background:var(--bad);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+.subbar{display:flex;align-items:center;gap:12px;padding:8px 20px;border-bottom:1px solid var(--line);background:var(--bg);min-height:38px}
+.crumbs{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);min-width:0;flex-wrap:wrap}
+.crumbs button{border:0;background:none;padding:0;color:var(--muted);font-weight:600}
+.crumbs button:hover{color:var(--accent)}
+.crumbs b{color:var(--fg);font-weight:700}
+.content{flex:1;min-height:0;overflow:auto;padding:20px 24px 32px}
+.content.nopad{padding:0;overflow:hidden}
+.scrim{display:none}
+/* page bits */
+.page-head{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.page-head h1{font-size:22px;font-weight:800;letter-spacing:-.01em}
+.page-head p{color:var(--muted);margin-top:2px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+.card-h{display:flex;align-items:center;gap:8px;padding:14px 16px 0}
+.card-h h3{font-size:14px;font-weight:700}
+.card-b{padding:14px 16px 16px}
+.grid{display:grid;gap:14px}
+.g-kpi{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.g-2{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+.g-eq{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.g-dash{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+.kpi{display:flex;flex-direction:column;gap:6px;padding:14px 16px;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:12px;box-shadow:var(--shadow)}
+.kpi:hover{border-color:var(--accent)}
+.kpi .k-l{color:var(--muted);font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px}
+.kpi .k-v{font-size:26px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 14px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);font-weight:600;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.ghost{border-color:transparent;background:none}
+.btn.ghost:hover{background:var(--surface-2)}
+.btn.s{padding:5px 10px;font-size:12.5px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.input,.select,.textarea{width:100%;padding:8px 11px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface);min-width:0}
+.input:focus,.select:focus,.textarea:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+.textarea{resize:vertical;min-height:72px}
+.select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a94ad' stroke-width='3' stroke-linecap='round'%3E%3Cpath d='M5 9l7 7 7-7'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field .lbl{font-size:12px;font-weight:700;color:var(--muted)}
+.field .err{color:var(--bad);font-size:12px}
+.field .hint{color:var(--muted);font-size:12px}
+.fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fgrid .full{grid-column:1/-1}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:600;white-space:nowrap}
+.chip button{border:0;background:none;padding:0;display:grid;place-items:center;color:inherit;opacity:.7}
+.chip button:hover{opacity:1}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap;background:var(--surface-2);color:var(--muted)}
+.pill.good{background:var(--good-soft);color:var(--good)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.info{background:var(--accent-soft);color:var(--accent)}
+.av{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;color:#fff;font-weight:700;font-size:12px;flex:none}
+.av.l{width:56px;height:56px;font-size:20px}
+.av.s{width:22px;height:22px;font-size:10px}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:left;font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface-2)}
+th button{border:0;background:none;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;display:inline-flex;align-items:center;gap:4px;padding:0}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr.clk{cursor:pointer}
+tr.clk:hover td{background:var(--surface-2)}
+tr:last-child td{border-bottom:0}
+.empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:36px 16px;text-align:center;color:var(--muted)}
+.empty b{color:var(--fg);font-size:15px}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--line)}
+.toolbar .input.q{max-width:300px}
+.toolbar .select{width:auto;min-width:130px}
+.switch{position:relative;width:38px;height:22px;flex:none}
+.switch input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;z-index:1}
+.switch i{position:absolute;inset:0;border-radius:99px;background:var(--line-strong);transition:.15s}
+.switch i::after{content:'';position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s}
+.switch input:checked+i{background:var(--accent)}
+.switch input:checked+i::after{transform:translateX(16px)}
+.switch input:focus-visible+i{outline:2px solid var(--accent);outline-offset:2px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{border:0;background:none;padding:10px 14px;font-weight:700;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:6px 12px;font-weight:600;color:var(--muted)}
+.seg button.on{background:var(--accent);color:var(--accent-fg)}
+.note{display:flex;gap:10px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:12.5px;line-height:1.4;align-items:flex-start}
+.note.info{background:var(--accent-soft);color:var(--accent)}
+/* menus, modal, toast */
+#menu-root{position:fixed;inset:0;z-index:80;pointer-events:none}
+.menu{position:fixed;pointer-events:auto;min-width:200px;max-width:340px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);padding:6px;max-height:70vh;overflow:auto}
+.menu button,.menu a.mi{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:8px 10px;border-radius:8px;text-align:left;font-weight:600;text-decoration:none;color:var(--fg)}
+.menu button:hover{background:var(--surface-2)}
+.menu .danger{color:var(--bad)}
+.menu hr{border:0;border-top:1px solid var(--line);margin:6px 0}
+.menu h5{margin:6px 10px 4px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.menu .mi-sub{display:block;font-weight:500;font-size:12px;color:var(--muted)}
+#modal-root{position:fixed;inset:0;z-index:70;pointer-events:none}
+.overlay{position:absolute;inset:0;background:var(--overlay);display:grid;place-items:center;padding:16px;pointer-events:auto;overflow:auto}
+.modal{background:var(--surface);border-radius:14px;box-shadow:var(--shadow-lg);width:100%;max-width:560px;max-height:calc(100% - 8px);display:flex;flex-direction:column;border:1px solid var(--line)}
+.modal.wide{max-width:760px}
+.modal-h{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.modal-h h3{font-size:16px;font-weight:800;flex:1}
+.modal-b{padding:16px 18px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.modal-f{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 14px 14px;flex-wrap:wrap}
+#toast-root{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;z-index:90;pointer-events:none;max-width:calc(100% - 32px)}
+.toast{pointer-events:auto;display:flex;gap:10px;align-items:center;background:#16213f;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:var(--shadow-lg);font-weight:600;animation:tin .2s ease}
+.toast.bad{background:#a3202b}
+.toast.warn{background:#8a5200}
+@keyframes tin{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+/* dashboard */
+.chartbox{width:100%}
+.chartbox svg{display:block;width:100%;height:auto}
+.ax{fill:var(--muted);font-size:11px;font-family:var(--font)}
+.gl{stroke:var(--line);stroke-width:1}
+.bar{fill:var(--accent)}
+.bar.last{fill:var(--accent)}
+.bar.dim{fill:var(--accent);opacity:.45}
+.hbar{display:grid;grid-template-columns:130px minmax(0,1fr) 84px;gap:10px;align-items:center;padding:6px 0}
+.hbar .track{height:10px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.hbar .track i{display:block;height:100%;background:var(--accent);border-radius:99px;min-width:2px}
+.legend{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
+.legend div{display:flex;align-items:center;gap:8px}
+.legend i{width:10px;height:10px;border-radius:3px;flex:none}
+.donut{width:140px;height:140px;flex:none}
+.donut circle{fill:none;stroke-width:22}
+.feed{display:flex;flex-direction:column}
+.feed-i{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.feed-i:last-child{border-bottom:0}
+.feed-ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);flex:none}
+.feed-ic.good{background:var(--good-soft);color:var(--good)}
+.feed-ic.warn{background:var(--warn-soft);color:var(--warn)}
+.dotc{width:9px;height:9px;border-radius:50%;flex:none}
+.tasklist{display:flex;flex-direction:column;gap:6px}
+.tasklist button{display:flex;align-items:center;gap:10px;border:1px dashed var(--line-strong);background:none;padding:9px 12px;border-radius:10px;text-align:left;font-weight:600}
+.tasklist button:hover{border-color:var(--accent);background:var(--accent-soft)}
+/* contact detail */
+.detail{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:14px;align-items:start}
+.kv{display:grid;grid-template-columns:110px minmax(0,1fr);gap:8px 10px;font-size:13px}
+.kv dt{color:var(--muted);font-weight:600}
+.kv dd{margin:0;overflow-wrap:anywhere}
+.tl{display:flex;flex-direction:column}
+.tl-i{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.tl-i:last-child{border-bottom:0}
+/* board */
+.board{display:flex;gap:12px;overflow-x:auto;align-items:flex-start;padding-bottom:14px}
+.bcol{flex:0 0 288px;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;max-height:calc(100vh - 290px);min-height:160px}
+.bcol.over{outline:2px dashed var(--accent);outline-offset:-2px;background:var(--accent-soft)}
+.bcol-h{padding:12px 12px 8px;display:flex;flex-direction:column;gap:2px}
+.bcol-h .t{display:flex;align-items:center;gap:6px;font-weight:800}
+.bcol-b{padding:4px 10px 10px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;flex:1;min-height:60px}
+.deal{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow);cursor:grab}
+.deal.dragging{opacity:.4}
+.deal:hover{border-color:var(--accent)}
+.deal .nm{font-weight:700;overflow-wrap:anywhere}
+/* inbox */
+.inbox{display:grid;grid-template-columns:minmax(260px,320px) minmax(0,1fr);height:100%;min-height:0}
+.inbox.info{grid-template-columns:minmax(260px,320px) minmax(0,1fr) minmax(240px,290px)}
+.in-list{border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;min-height:0}
+.in-list .items{overflow:auto;flex:1}
+.cv{display:flex;gap:10px;padding:12px 14px;border:0;border-bottom:1px solid var(--line);background:none;width:100%;text-align:left}
+.cv:hover{background:var(--surface-2)}
+.cv.on{background:var(--accent-soft)}
+.cv.unread .cv-n{font-weight:800}
+.cv .ud{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;margin-top:6px}
+.in-thread{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--bg)}
+.in-head{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.thread{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:min(520px,82%);padding:9px 12px;border-radius:14px;line-height:1.4;overflow-wrap:anywhere}
+.msg.in{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.out{align-self:flex-end;background:var(--accent);color:var(--accent-fg);border-bottom-right-radius:4px}
+.msg.note{align-self:stretch;max-width:none;background:var(--warn-soft);color:var(--warn);border-radius:10px}
+.msg small{display:block;opacity:.78;font-size:11px;margin-top:4px}
+.composer{background:var(--surface);border-top:1px solid var(--line);padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+.in-info{border-left:1px solid var(--line);background:var(--surface);padding:16px;overflow:auto;display:flex;flex-direction:column;gap:14px;min-height:0}
+.back-btn{display:none}
+/* calendar */
+.calwrap{display:grid;grid-template-columns:220px minmax(0,1fr);gap:14px;align-items:start}
+.mgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.mgrid .dh{padding:8px;font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.mday{min-height:104px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:4px;display:flex;flex-direction:column;gap:3px;cursor:pointer;min-width:0}
+.mday:nth-child(7n){border-right:0}
+.mday.off{background:var(--surface-2);color:var(--muted)}
+.mday .dn{font-weight:700;font-size:12px;width:24px;height:24px;display:grid;place-items:center;border-radius:50%}
+.mday.today .dn{background:var(--accent);color:var(--accent-fg)}
+.evt{display:flex;gap:5px;align-items:center;border:0;text-align:left;padding:2px 6px;border-radius:5px;font-size:11.5px;font-weight:600;color:var(--fg);min-width:0;background:var(--surface-2);border-left:3px solid var(--ec,var(--accent));width:100%}
+.evt span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.evt.x{text-decoration:line-through;opacity:.55}
+.wk{display:grid;grid-template-columns:52px repeat(7,minmax(90px,1fr));min-width:700px}
+.wk-h{padding:8px;text-align:center;font-weight:700;border-bottom:1px solid var(--line);background:var(--surface-2);font-size:12px}
+.wk-h.today{color:var(--accent)}
+.wk-t{height:48px;font-size:11px;color:var(--muted);text-align:right;padding:2px 6px 0 0;border-bottom:1px solid var(--line)}
+.wk-c{position:relative;border-left:1px solid var(--line)}
+.wk-slot{height:48px;border-bottom:1px solid var(--line);cursor:pointer}
+.wk-slot:hover{background:var(--accent-soft)}
+.wk-ev{position:absolute;border:0;border-left:3px solid var(--ec,var(--accent));background:var(--surface-2);border-radius:5px;padding:2px 5px;font-size:11px;text-align:left;overflow:hidden;font-weight:600;box-shadow:var(--shadow);z-index:2}
+.nowline{position:absolute;left:0;right:0;height:2px;background:var(--bad);z-index:3}
+.agenda-day{display:grid;grid-template-columns:90px minmax(0,1fr);gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.ag-ev{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-left:4px solid var(--ec,var(--accent));border-radius:8px;padding:8px 10px;background:var(--surface);width:100%;text-align:left}
+/* automation */
+.canvas{background-image:radial-gradient(var(--line) 1px,transparent 1px);background-size:18px 18px;overflow:auto;min-height:0}
+.flow{display:flex;flex-direction:column;align-items:center;padding:28px 20px 90px;min-width:max-content;margin:0 auto}
+.node{width:300px;border:1px solid var(--line-strong);border-radius:12px;background:var(--surface);padding:10px 12px;display:flex;gap:10px;align-items:flex-start;text-align:left;box-shadow:var(--shadow);position:relative}
+.node:hover{border-color:var(--accent)}
+.node.sel{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.node.done{border-color:var(--good);background:var(--good-soft)}
+.node.cur{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.nic{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:none;background:var(--accent-soft);color:var(--accent)}
+.nic.trg{background:var(--warn-soft);color:var(--warn)}
+.nic.msg{background:var(--good-soft);color:var(--good)}
+.nic.lg{background:#ece4fb;color:#6c3fc4}
+:root[data-theme="dark"] .nic.lg{background:#2a1f4a;color:#c3a6ff}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .nic.lg{background:#2a1f4a;color:#c3a6ff}}
+.node .nt{font-weight:700;font-size:13px}
+.node .nd{color:var(--muted);font-size:12px;overflow-wrap:anywhere;margin-top:1px}
+.node-tools{position:absolute;top:6px;right:6px;display:none;gap:2px}
+.node:hover .node-tools,.node.sel .node-tools{display:flex}
+.node-tools button{width:24px;height:24px;border-radius:6px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;color:var(--muted)}
+.node-tools button:hover{color:var(--accent);border-color:var(--accent)}
+.fline{width:2px;height:36px;background:var(--line-strong);position:relative;flex:none}
+.fline.act{background:var(--accent)}
+.fline .plus{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;border:1px solid var(--line-strong);background:var(--surface);display:grid;place-items:center;color:var(--muted);padding:0}
+.fline .plus:hover{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.fork{display:flex;position:relative;padding-top:28px;align-items:flex-start;gap:24px}
+.fork::before{content:'';position:absolute;top:0;left:25%;right:25%;border-top:2px solid var(--line-strong)}
+.branch{flex:1 1 0;min-width:330px;display:flex;flex-direction:column;align-items:center;position:relative}
+.branch::before{content:'';position:absolute;top:-28px;left:50%;height:28px;border-left:2px solid var(--line-strong)}
+.blabel{font-size:11px;font-weight:800;padding:2px 10px;border-radius:99px;margin-bottom:10px;background:var(--surface);border:1px solid var(--line-strong);color:var(--muted)}
+.blabel.y{color:var(--good);border-color:var(--good)}
+.blabel.n{color:var(--bad);border-color:var(--bad)}
+.endcap{font-size:11px;color:var(--muted);border:1px dashed var(--line-strong);border-radius:99px;padding:2px 10px;background:var(--surface)}
+.wf-wrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;height:100%;min-height:0}
+.wf-side{border-left:1px solid var(--line);background:var(--surface);overflow:auto;display:flex;flex-direction:column;min-height:0}
+.wf-bar{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--surface);flex-wrap:wrap}
+.wf-col{display:flex;flex-direction:column;height:100%;min-height:0}
+.log{font-family:var(--mono);font-size:12px;display:flex;flex-direction:column;gap:6px}
+.log div{padding:6px 8px;border-radius:6px;background:var(--surface-2);border-left:3px solid var(--accent)}
+.log div.logic{border-left-color:#8a5cd6}
+.log div.ok{border-left-color:var(--good)}
+/* forms */
+.fb{display:grid;grid-template-columns:200px minmax(0,1fr) 320px;height:100%;min-height:0}
+.fb-pal{border-right:1px solid var(--line);background:var(--surface);padding:14px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.fb-pal button{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--line);background:var(--surface);border-radius:8px;font-weight:600;text-align:left}
+.fb-pal button:hover{border-color:var(--accent);background:var(--accent-soft)}
+.fb-canvas{overflow:auto;padding:20px;background:var(--bg)}
+.fb-form{max-width:640px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow)}
+.fb-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fb-grid .full{grid-column:1/-1}
+.ff{border:1px solid transparent;border-radius:10px;padding:8px;position:relative;cursor:pointer}
+.ff:hover{border-color:var(--line-strong)}
+.ff.sel{border-color:var(--accent);background:var(--accent-soft)}
+.ff.dragover{border-color:var(--accent);border-style:dashed}
+.ff .ff-tools{position:absolute;top:4px;right:4px;display:none;gap:2px}
+.ff:hover .ff-tools,.ff.sel .ff-tools{display:flex}
+.ff-tools button{width:24px;height:24px;border-radius:6px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;color:var(--muted);padding:0}
+.ff-tools button:hover{color:var(--accent);border-color:var(--accent)}
+.fb-props{border-left:1px solid var(--line);background:var(--surface);padding:16px;overflow:auto;display:flex;flex-direction:column;gap:12px}
+.ff .input,.ff .select,.ff .textarea{pointer-events:none}
+.chk{display:flex;align-items:center;gap:8px}
+.chk input{width:16px;height:16px;accent-color:var(--accent)}
+/* settings */
+.setwrap{display:grid;grid-template-columns:220px minmax(0,1fr);gap:16px;align-items:start}
+.setnav{display:flex;flex-direction:column;gap:2px;padding:8px}
+.setnav button{display:flex;align-items:center;gap:10px;border:0;background:none;padding:9px 12px;border-radius:8px;text-align:left;font-weight:600;color:var(--muted)}
+.setnav button:hover{background:var(--surface-2);color:var(--fg)}
+.setnav button.on{background:var(--accent-soft);color:var(--accent)}
+.hours{display:grid;grid-template-columns:110px 44px minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center}
+.srow{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.srow:last-child{border-bottom:0}
+/* responsive */
+@media (max-width:1180px){
+  .inbox.info{grid-template-columns:minmax(260px,320px) minmax(0,1fr)}
+  .inbox.info .in-info{position:fixed;right:0;top:0;bottom:0;width:min(320px,90vw);z-index:40;box-shadow:var(--shadow-lg)}
+  .g-2{grid-template-columns:minmax(0,1fr)}
+  .fb{grid-template-columns:170px minmax(0,1fr) 280px}
+}
+@media (max-width:980px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{position:fixed;left:0;top:0;bottom:0;width:260px;transform:translateX(-100%);transition:transform .2s;box-shadow:var(--shadow-lg)}
+  .app.collapsed .lbl,.app.collapsed .acct-txt,.app.collapsed .simtag{display:revert}
+  .app.collapsed .nav button{justify-content:flex-start;padding:9px 12px}
+  .app.side-open .side{transform:none}
+  .app.side-open .scrim{display:block;position:fixed;inset:0;background:var(--overlay);z-index:25}
+  .top .burger{display:inline-grid}
+  .collapse-btn{display:none}
+  .detail{grid-template-columns:minmax(0,1fr)}
+  .calwrap{grid-template-columns:minmax(0,1fr)}
+  .wf-wrap{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,46%)}
+  .wf-side{border-left:0;border-top:1px solid var(--line)}
+  .fb{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) minmax(0,42%)}
+  .fb-pal{flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:1px solid var(--line);padding:10px}
+  .fb-props{border-left:0;border-top:1px solid var(--line)}
+  .setwrap{grid-template-columns:minmax(0,1fr)}
+  .setnav{flex-direction:row;overflow-x:auto}
+  .setnav button{white-space:nowrap}
+}
+@media (max-width:760px){
+  .content{padding:14px 16px 28px}
+  .inbox,.inbox.info{grid-template-columns:minmax(0,1fr)}
+  .inbox .in-thread{display:none}
+  .inbox.has-thread .in-list{display:none}
+  .inbox.has-thread .in-thread{display:flex}
+  .back-btn{display:inline-grid}
+  .fgrid{grid-template-columns:minmax(0,1fr)}
+  .simpill span{display:none}
+  .hbar{grid-template-columns:90px minmax(0,1fr) 70px}
+  .hide-sm{display:none!important}
+  .mday{min-height:78px}
+  .kv{grid-template-columns:90px minmax(0,1fr)}
+  .agenda-day{grid-template-columns:minmax(0,1fr)}
+  .subbar{padding:8px 16px}
+  .top{padding:10px 12px}
+  .hours{grid-template-columns:90px 44px minmax(0,1fr) minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+<style>
+/* Home landing page and page-loading screen */
+.home{min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);background:var(--bg)}
+.home-hero{background:var(--side-bg);color:var(--side-fg);padding:clamp(24px,5vw,64px);display:flex;flex-direction:column;justify-content:center;gap:22px;min-width:0}
+.home-brand{display:flex;align-items:center;gap:10px;color:#fff;font-weight:800;font-size:15px}
+.home-logo{width:34px;height:34px;border-radius:9px;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center}
+.home-hero h1{color:#fff;font-size:clamp(28px,3.6vw,42px);line-height:1.1;letter-spacing:-.02em;font-weight:800;text-wrap:balance;max-width:18ch}
+.home-hero p{max-width:52ch;font-size:15px;line-height:1.55}
+.home-mods{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.home-mods li{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);min-width:0}
+.home-mods li>span:first-child{color:var(--accent);flex:none;margin-top:1px}
+.home-mods b{color:#fff;display:block;font-size:13.5px}
+.home-mods small{font-size:12px;line-height:1.35}
+.home-auth{display:flex;align-items:center;justify-content:center;padding:clamp(24px,5vw,56px) 16px}
+.auth-card{width:100%;max-width:420px;display:flex;flex-direction:column;gap:14px}
+.auth-card h2{font-size:24px;font-weight:800;letter-spacing:-.01em}
+.pw-row{display:flex;gap:6px}
+.demo{border:1px dashed var(--line-strong);border-radius:12px;padding:14px;background:var(--surface);display:flex;flex-direction:column;gap:10px}
+.demo .kv{grid-template-columns:78px minmax(0,1fr);align-items:center}
+.demo dd{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.loader{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:55vh;height:100%;text-align:center;padding:24px}
+.spin{width:40px;height:40px;border-radius:50%;border:3px solid var(--line-strong);border-top-color:var(--accent);animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (max-width:860px){.home{grid-template-columns:minmax(0,1fr)}.home-auth{order:-1}.home-mods{grid-template-columns:minmax(0,1fr)}}
+</style>
+
+<div id="root"></div><div id="menu-root"></div><div id="modal-root"></div><div id="toast-root" aria-live="polite"></div>
+<script>
+'use strict';
+/* ============ utilities ============ */
+const STORE='crm-sim-v2';
+const DAY=864e5,HOUR=36e5;
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=p=>p+Math.random().toString(36).slice(2,8);
+const sum=(a,k)=>a.reduce((s,x)=>s+(+x[k]||0),0);
+const money=n=>'$'+Math.round(+n||0).toLocaleString('en-US');
+const fdate=ts=>ts?new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
+const fdateY=ts=>ts?new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
+const ftime=ts=>new Date(ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+const fday=ts=>new Date(ts).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+const pad=n=>String(n).padStart(2,'0');
+const ymd=ts=>{const d=new Date(ts);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());};
+const hm=ts=>{const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes());};
+const mk=(ds,tm)=>{const [y,m,d]=String(ds).split('-').map(Number);const [h,mi]=String(tm||'00:00').split(':').map(Number);return new Date(y,m-1,d,h||0,mi||0,0,0).getTime();};
+const sod=ts=>{const d=new Date(ts);d.setHours(0,0,0,0);return d.getTime();};
+const addDays=(ts,n)=>{const d=new Date(ts);d.setDate(d.getDate()+n);return d.getTime();};
+function rel(ts){const d=Date.now()-ts;if(d<6e4)return 'just now';if(d<HOUR)return Math.floor(d/6e4)+'m ago';if(d<DAY)return Math.floor(d/HOUR)+'h ago';if(d<2*DAY)return 'Yesterday';if(d<7*DAY)return Math.floor(d/DAY)+'d ago';return fdate(ts);}
+function setPath(o,p,v){const k=p.split('.');let t=o;for(let i=0;i<k.length-1;i++){if(t[k[i]]==null||typeof t[k[i]]!=='object')t[k[i]]={};t=t[k[i]];}t[k[k.length-1]]=v;}
+function getPath(o,p){return p.split('.').reduce((a,k)=>a==null?a:a[k],o);}
+const clone=o=>JSON.parse(JSON.stringify(o));
+const validEmail=s=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(s||'').trim());
+
+const ICONS={
+home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6"/><path d="M16 4.5a3.5 3.5 0 010 7"/><path d="M18 14.5c2 .8 3.5 2.8 3.5 5.5"/>',
+kanban:'<rect x="3" y="4" width="5" height="16" rx="1.2"/><rect x="10" y="4" width="5" height="10" rx="1.2"/><rect x="17" y="4" width="4" height="13" rx="1.2"/>',
+message:'<path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/>',
+calendar:'<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+zap:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+form:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+settings:'<path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>',
+search:'<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
+bell:'<path d="M6 16V11a6 6 0 1112 0v5l1.5 2h-15z"/><path d="M10 21h4"/>',
+plus:'<path d="M12 5v14M5 12h14"/>',
+x:'<path d="M6 6l12 12M18 6L6 18"/>',
+edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+chevL:'<path d="M15 5l-7 7 7 7"/>',chevR:'<path d="M9 5l7 7-7 7"/>',chevD:'<path d="M5 9l7 7 7-7"/>',
+menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',
+more:'<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+check:'<path d="M5 12.5l4.5 4.5L19 7"/>',
+mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/>',
+phone:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/>',
+tag:'<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/>',
+filter:'<path d="M4 5h16l-6 8v6l-4-2v-4z"/>',
+play:'<path d="M7 4l13 8-13 8z"/>',
+clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/>',
+send:'<path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/>',
+sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/>',
+moon:'<path d="M20 14.5A8.5 8.5 0 019.5 4 8.5 8.5 0 1020 14.5z"/>',
+list:'<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+dollar:'<path d="M12 3v18M16.5 7.5C16 6 14.5 5 12 5S7.5 6.2 7.5 8.2c0 4 9 2 9 6.1 0 2-2 3.2-4.5 3.2s-4.2-1-4.7-2.6"/>',
+copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/>',
+info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6.5 8-6.5s8 2.5 8 6.5"/>',
+building:'<rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/>',
+grip:'<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>',
+sidebar:'<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9.5 4.5v15"/>',
+up:'<path d="M12 19V5M6 11l6-6 6 6"/>',down:'<path d="M12 5v14M6 13l6 6 6-6"/>',
+branch:'<circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="9" r="2"/><path d="M6 7v10M18 11c0 4-6 3-12 6"/>',
+grid:'<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+chart:'<path d="M4 20V4M4 20h16M8 16v-5M12 16V8M16 16v-3"/>',
+refresh:'<path d="M20 11a8 8 0 00-14-4L4 9M4 4v5h5M4 13a8 8 0 0014 4l2-2M20 20v-5h-5"/>',
+link:'<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/>',
+pin:'<path d="M12 21s7-6.2 7-11.5A7 7 0 005 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+inbox:'<path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 2h6l1-2h5"/>',
+eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/>',
+};
+const ic=(n,s=18)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`;
+
+/* ============ seed data ============ */
+function seed(){
+  const T=sod(Date.now());
+  const at=(off,h=9,m=0)=>{const x=new Date(T);x.setDate(x.getDate()+off);x.setHours(h,m,0,0);return x.getTime();};
+  const team=[
+    {id:'u1',name:'Alex Rivera',email:'alex@cedarandco.example',role:'Admin',title:'Owner',color:'#2a6fdb'},
+    {id:'u2',name:'Jordan Lee',email:'jordan@cedarandco.example',role:'User',title:'Sales Lead',color:'#0f8b6d'},
+    {id:'u3',name:'Sam Patel',email:'sam@cedarandco.example',role:'User',title:'Estimator',color:'#b5651d'},
+    {id:'u4',name:'Jamie Reyes',email:'jamie@cedarandco.example',role:'User',title:'Virtual Assistant',color:'#7a4fc9'}
+  ];
+  const customFields=[
+    {id:'cf1',name:'Project Type',type:'select',options:['Kitchen','Bathroom','Basement','Deck / Patio','Whole Home']},
+    {id:'cf2',name:'Estimated Budget',type:'number',options:[]},
+    {id:'cf3',name:'Target Start Date',type:'date',options:[]}
+  ];
+  const CT=[
+    ['Maria','Alvarez','','Google Ads','Kitchen',38000,['kitchen','hot-lead'],'u2',1,'Oakland'],
+    ['James','Whitfield','Whitfield Dental','Referral','Bathroom',15000,['bathroom','referral'],'u2',2,'Berkeley'],
+    ['Priya','Nair','','Facebook Ads','Basement',50000,['basement','needs-follow-up'],'u3',2,'San Mateo'],
+    ['Daniel','Okafor','','Website Form','Deck / Patio',20000,['deck','website-lead'],'u2',3,'Alameda'],
+    ['Hannah','Lindqvist','Lindqvist Studio','Referral','Whole Home',120000,['vip','referral'],'u1',5,'Piedmont'],
+    ['Marcus','Bell','','Yelp','Kitchen',28000,['kitchen'],'u3',6,'Oakland'],
+    ['Sofia','Rossi','','Home Show','Bathroom',12000,['bathroom','home-show'],'u2',8,'Walnut Creek'],
+    ['Tyler','Brooks','','Facebook Ads','Kitchen',10000,['kitchen','needs-follow-up'],'u3',9,'Hayward'],
+    ['Angela','Cho','','Google Ads','Basement',60000,['basement','hot-lead'],'u2',11,'San Leandro'],
+    ['Robert','Hale','Hale & Sons Plumbing','Referral','Deck / Patio',15000,['deck','referral'],'u2',13,'Fremont'],
+    ['Elena','Petrova','','Website Form','Kitchen',35000,['kitchen','website-lead'],'u3',15,'Oakland'],
+    ['Samuel','Greene','','Yelp','Bathroom',9000,['bathroom','past-client'],'u2',18,'Albany'],
+    ['Natalie','Duarte','','Google Ads','Whole Home',95000,['vip','hot-lead'],'u1',21,'Lafayette'],
+    ['Kevin','Mbeki','','Facebook Ads','Deck / Patio',12000,['deck'],'u3',24,'Union City'],
+    ['Olivia','Bennett','','Referral','Kitchen',30000,['kitchen','referral'],'u2',28,'Orinda'],
+    ['Chris','Tanaka','','Website Form','Basement',22000,['basement','past-client'],'u3',33,'Oakland']
+  ];
+  const contacts=CT.map((r,i)=>({
+    id:'c'+(i+1),firstName:r[0],lastName:r[1],company:r[2],source:r[3],tags:r[6].slice(),ownerId:r[7],city:r[9]+', CA',
+    email:(r[0]+'.'+r[1]).toLowerCase()+'@example.com',phone:'(510) 555-01'+pad(10+i),
+    createdAt:at(-r[8],8+(i%8),(i*7)%60),
+    custom:{cf1:r[4],cf2:r[5],cf3:''},notes:[]
+  }));
+  contacts[0].notes.push({id:'n1',text:'Wants shaker cabinets and quartz counters. Dog at home, so schedule visits before 4pm.',at:at(-1,10,40)});
+  contacts[0].custom.cf3=ymd(at(45));
+  contacts[4].notes.push({id:'n2',text:'Referred by Olivia Bennett. Large budget, wants a single point of contact for the whole project.',at:at(-4,15,5)});
+  contacts[12].notes.push({id:'n3',text:'Comparing us with two other contractors. Send portfolio photos before the estimate.',at:at(-9,11,20)});
+  const pipelines=[{id:'p1',name:'Sales Pipeline',stages:[{id:'s1',name:'New Lead'},{id:'s2',name:'Contacted'},{id:'s3',name:'Qualified'},{id:'s4',name:'Proposal'},{id:'s5',name:'Won'},{id:'s6',name:'Lost'}]}];
+  const O=[
+    ['Alvarez Kitchen Remodel',1,38500,'s3','u2',14,2],
+    ['Whitfield Primary Bath',2,14200,'s4','u2',9,6],
+    ['Nair Basement Finish',3,52000,'s2','u3',21,2],
+    ['Okafor Cedar Deck',4,18900,'s1','u2',25,3],
+    ['Bell Kitchen Refresh',6,27400,'s4','u3',5,12],
+    ['Rossi Guest Bath',7,11800,'s3','u2',12,8],
+    ['Brooks Kitchen Island',8,9600,'s1','u3',30,9],
+    ['Cho Basement Suite',9,61000,'s4','u2',10,16],
+    ['Hale Patio Cover',10,15300,'s2','u2',18,13],
+    ['Petrova Kitchen',11,33200,'s2','u3',20,15],
+    ['Duarte Whole Home',13,94000,'s3','u1',7,22],
+    ['Bennett Kitchen',15,29800,'s4','u2',16,28],
+    ['Greene Hall Bath',12,8700,'s5','u2',-6,24],
+    ['Tanaka Basement Bath',16,22400,'s5','u3',-15,36],
+    ['Lindqvist Whole Home',5,118000,'s5','u1',-3,20],
+    ['Mbeki Pergola',14,12400,'s6','u3',-8,26]
+  ];
+  const ordN={};
+  const opps=O.map((r,i)=>{ordN[r[3]]=ordN[r[3]]||0;return {id:'o'+(i+1),name:r[0],contactId:'c'+r[1],value:r[2],pipelineId:'p1',stageId:r[3],ownerId:r[4],closeDate:ymd(at(r[5])),createdAt:at(-r[6]),stageSince:at(-Math.max(1,Math.floor(r[6]/2))),ord:ordN[r[3]]++};});
+  const calendars=[
+    {id:'cal1',name:'Free Estimates',color:'#1c6ef2'},
+    {id:'cal2',name:'Site Visits',color:'#0f9d77'},
+    {id:'cal3',name:'Follow-up Calls',color:'#e08a00'}
+  ];
+  const A=[
+    ['Kitchen estimate: Maria Alvarez','c1','cal1',3,10,0,60,'confirmed'],
+    ['Site visit: Sofia Rossi','c7','cal2',0,14,0,60,'confirmed'],
+    ['Follow-up call: James Whitfield','c2','cal3',1,9,30,15,'confirmed'],
+    ['Deck estimate: Daniel Okafor','c4','cal1',2,13,0,60,'confirmed'],
+    ['Site visit: Priya Nair','c3','cal2',4,11,0,90,'confirmed'],
+    ['Follow-up call: Marcus Bell','c6','cal3',0,16,0,30,'confirmed'],
+    ['Kitchen estimate: Elena Petrova','c11','cal1',6,9,0,60,'confirmed'],
+    ['Site visit: Angela Cho','c9','cal2',8,15,0,60,'confirmed'],
+    ['Follow-up call: Robert Hale','c10','cal3',-1,11,0,15,'showed'],
+    ['Kitchen estimate: Tyler Brooks','c8','cal1',-2,10,0,60,'no-show'],
+    ['Whole home estimate: Natalie Duarte','c13','cal1',9,10,0,90,'confirmed'],
+    ['Follow-up call: Olivia Bennett','c15','cal3',5,9,0,15,'confirmed']
+  ];
+  const appts=A.map((r,i)=>({id:'a'+(i+1),title:r[0],contactId:r[1],calendarId:r[2],start:at(r[3],r[4],r[5]),end:at(r[3],r[4],r[5])+r[6]*60000,status:r[7],location:r[2]==='cal3'?'Phone call (simulated)':'Client address',notes:''}));
+  const M=(dir,ch,text,t)=>({id:uid('m'),dir,ch,text,at:t});
+  const cv=(cid,unread,status,msgs)=>({id:'cv'+cid,contactId:cid,status,unread,messages:msgs,lastAt:msgs[msgs.length-1].at});
+  const convos=[
+    cv('c1',true,'open',[
+      M('in','sms','Hi! I filled out your form about a kitchen remodel. Can someone call me this week?',at(-2,10,14)),
+      M('out','sms','Hi Maria, thanks for reaching out to Cedar & Co.! We can set up a free estimate. Does Thursday at 10am work?',at(-2,10,31)),
+      M('in','sms','Thursday 10 works. Should I have my cabinet measurements ready?',at(-1,9,2))]),
+    cv('c2',false,'open',[
+      M('out','email','Subject: Your bathroom proposal\n\nHi James, attached is the proposal we discussed. The total comes to $14,200 including tile and fixtures. Let me know if you have questions.',at(-3,14,10)),
+      M('in','email','Thanks, reviewing with my wife tonight. Can the vanity be upgraded without changing the timeline?',at(-1,18,45))]),
+    cv('c3',true,'open',[M('in','sms','Do you handle egress windows for basements?',at(0,8,20))]),
+    cv('c4',false,'open',[
+      M('in','sms','Is cedar or composite better for a deck that gets full sun?',at(-2,16,0)),
+      M('out','sms','Great question Daniel. Composite holds up better in direct sun, and cedar looks warmer. We can compare samples at the estimate.',at(-2,16,25))]),
+    cv('c6',false,'closed',[
+      M('out','sms','Hi Marcus, here is the updated timeline for the kitchen refresh. Cabinets arrive the first week of November.',at(-4,13,0)),
+      M('in','sms','Perfect, thank you!',at(-4,13,30))]),
+    cv('c7',true,'open',[M('in','email','Subject: Question about tile\n\nHi, I saw a sample at the home show. Is the 12x24 porcelain still available in matte?',at(-1,12,15))]),
+    cv('c9',false,'open',[
+      M('out','sms','Hi Angela, confirming our site visit for the basement suite. See you then!',at(-3,10,0)),
+      M('in','sms','See you then. The side gate code is 4412.',at(-3,10,12))]),
+    cv('c13',false,'open',[
+      M('in','email','Subject: Portfolio photos\n\nCould you send photos of past whole home projects before our estimate?',at(-2,9,40)),
+      M('out','email','Subject: Re: Portfolio photos\n\nAbsolutely, Natalie. I will send a gallery link this afternoon.',at(-2,11,5))])
+  ];
+  const workflows=[
+    {id:'w1',name:'New Lead Welcome',status:'published',trigger:{type:'contact_created',cfg:{}},execs:41,runs:[],
+     steps:[
+      {id:'n1',type:'add_tag',cfg:{tag:'new-lead'}},
+      {id:'n2',type:'create_task',cfg:{title:'Call {{contact.first_name}} {{contact.last_name}} within 24 hours',dueDays:1}},
+      {id:'n3',type:'sms',cfg:{message:'Hi {{contact.first_name}}, thanks for contacting {{business.name}}! We will reach out shortly to schedule your free estimate.'}}]},
+    {id:'w2',name:'Estimate Booked',status:'published',trigger:{type:'appt_booked',cfg:{}},execs:27,runs:[],
+     steps:[
+      {id:'n4',type:'add_tag',cfg:{tag:'estimate-booked'}},
+      {id:'n5',type:'sms',cfg:{message:'Hi {{contact.first_name}}, your estimate with {{business.name}} is booked. Reply here if you need to reschedule.'}},
+      {id:'n6',type:'wait',cfg:{amount:1,unit:'days'}},
+      {id:'n7',type:'create_task',cfg:{title:'Prepare estimate notes for {{contact.first_name}} {{contact.last_name}}',dueDays:1}}]},
+    {id:'w3',name:'Proposal Follow-up',status:'draft',trigger:{type:'opp_stage',cfg:{stage:'Proposal'}},execs:9,runs:[],
+     steps:[
+      {id:'n8',type:'wait',cfg:{amount:2,unit:'days'}},
+      {id:'n9',type:'create_task',cfg:{title:'Follow up on the proposal with {{contact.first_name}} {{contact.last_name}}',dueDays:2}},
+      {id:'n10',type:'notify',cfg:{message:'Proposal sent to {{contact.first_name}} {{contact.last_name}}. Follow-up task created.'}}]}
+  ];
+  const tk=(title,cid,off,done,owner)=>({id:uid('t'),title,contactId:cid,due:ymd(at(off)),done:!!done,ownerId:owner||'u4',createdAt:at(-2)});
+  const tasks=[
+    tk('Call Maria Alvarez to confirm Thursday estimate','c1',0),
+    tk('Send tile availability to Sofia Rossi','c7',0),
+    tk('Email proposal revisions to James Whitfield','c2',1),
+    tk('Send portfolio gallery link to Natalie Duarte','c13',1),
+    tk('Log site visit photos for Angela Cho','c9',3),
+    tk('Update Priya Nair contact notes after call','c3',-1),
+    tk('Send welcome packet to Daniel Okafor','c4',-2,true),
+    tk('Confirm cabinet delivery date with Marcus Bell','c6',-3,true)
+  ];
+  const activity=[
+    {id:'ac1',type:'msg',text:'Maria Alvarez replied by SMS (simulated)',at:at(-1,9,2),cid:'c1'},
+    {id:'ac2',type:'opp',text:'Bell Kitchen Refresh moved to Proposal',at:at(-1,15,30),cid:'c6'},
+    {id:'ac3',type:'contact',text:'Daniel Okafor was added from Website Form',at:at(-3,8,5),cid:'c4'},
+    {id:'ac4',type:'appt',text:'Appointment booked: Kitchen estimate with Maria Alvarez',at:at(-2,10,35),cid:'c1'},
+    {id:'ac5',type:'opp',text:'Greene Hall Bath marked Won ($8,700)',at:at(-6,16,0),cid:'c12'},
+    {id:'ac6',type:'flow',text:'Workflow "New Lead Welcome" ran for Daniel Okafor (simulated)',at:at(-3,8,6),cid:'c4'},
+    {id:'ac7',type:'opp',text:'Cho Basement Suite moved to Proposal',at:at(-5,11,20),cid:'c9'},
+    {id:'ac8',type:'appt',text:'Appointment no-show: Tyler Brooks',at:at(-2,10,15),cid:'c8'}
+  ];
+  const notifs=[
+    {id:'nt1',text:'Maria Alvarez replied to your SMS (simulated)',at:at(-1,9,2),read:false,route:'conversations'},
+    {id:'nt2',text:'Task due today: Call Maria Alvarez to confirm Thursday estimate',at:at(0,7,0),read:false,route:'dashboard'},
+    {id:'nt3',text:'Site visit today at 2:00 PM with Sofia Rossi',at:at(0,7,0),read:true,route:'calendars'}
+  ];
+  return {v:2,
+    biz:{name:'Cedar & Co. Remodeling',email:'hello@cedarandco.example',phone:'(510) 555-0100',color:'#1c6ef2'},
+    meId:'u4',team,customFields,contacts,pipelines,opps,calendars,appts,convos,workflows,tasks,activity,notifs,prefs:{theme:'system'}};
+}
+
+/* ============ state ============ */
+let DB=null;
+const UI={route:'dashboard',contactId:null,side:false,collapsed:false,range:30,infoDismissed:false,
+  gs:{q:'',open:false},
+  contacts:{q:'',tag:'',source:'',sort:'createdAt',dir:-1,page:1,sel:[],tab:'timeline'},
+  opps:{pid:'p1',view:'board',q:'',status:'all',owner:'all'},
+  conv:{id:null,filter:'all',q:'',ch:'sms',info:false,subject:'',draft:''},
+  cal:{view:'month',date:Date.now(),hidden:[]},
+  wf:{id:null,sel:'trigger',panel:'config',test:null,tcontact:'',tapply:false},
+  forms:{id:null,tab:'build',sel:null,pv:{},pe:{},sent:false,sub:null},
+  set:{tab:'business'},
+  menu:null,modal:null,drag:null};
+const A={},MENUS={},LIVE={},CHG={},SUB={},DROP={};
+function load(){try{const s=localStorage.getItem(STORE);if(s){const d=JSON.parse(s);if(d&&d.v===2)return d;}}catch(e){}return null;}
+let saveT=null;
+function save(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(STORE,JSON.stringify(DB));}catch(e){}},120);}
+function commit(){save();render();}
+
+/* ============ data helpers ============ */
+const cfind=id=>DB.contacts.find(c=>c.id===id);
+const cname=c=>c?(((c.firstName||'')+' '+(c.lastName||'')).trim()||c.email||'Unnamed contact'):'Unknown contact';
+const ufind=id=>DB.team.find(u=>u.id===id);
+const me=()=>ufind(DB.meId)||DB.team[0];
+const calfind=id=>DB.calendars.find(c=>c.id===id);
+const pfind=id=>DB.pipelines.find(p=>p.id===id);
+const stageName=(pid,sid)=>{const p=pfind(pid);const s=p&&p.stages.find(x=>x.id===sid);return s?s.name:'—';};
+const unreadCount=()=>DB.convos.filter(c=>c.unread).length;
+const allTags=()=>[...new Set(DB.contacts.flatMap(c=>c.tags||[]))].sort();
+const SOURCES=['Google Ads','Facebook Ads','Referral','Website Form','Yelp','Home Show','Walk-in','Other'];
+const AVC=['#2a6fdb','#0f8b6d','#b5651d','#7a4fc9','#c2476b','#3d7f8f','#8a6d1d','#5a6bd1'];
+const hashc=s=>{let h=0;for(const ch of String(s))h=(h*31+ch.charCodeAt(0))>>>0;return AVC[h%AVC.length];};
+const inits=n=>String(n).split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'?';
+const av=(name,cls='',col)=>`<span class="av ${cls}" style="background:${col||hashc(name)}" aria-hidden="true">${esc(inits(name))}</span>`;
+const pill=(t,k='')=>`<span class="pill ${k}">${esc(t)}</span>`;
+const chip=t=>`<span class="chip">${esc(t)}</span>`;
+function log(type,text,cid){DB.activity.unshift({id:uid('a'),type,text,at:Date.now(),cid:cid||null});DB.activity=DB.activity.slice(0,300);}
+function notify(text,route){DB.notifs.unshift({id:uid('n'),text,at:Date.now(),read:false,route:route||null});DB.notifs=DB.notifs.slice(0,50);}
+function rel(ts){const d=Date.now()-ts;if(d<6e4)return 'just now';if(d<HOUR)return Math.floor(d/6e4)+'m ago';if(d<DAY)return Math.floor(d/HOUR)+'h ago';if(d<2*DAY)return 'Yesterday';if(d<7*DAY)return Math.floor(d/DAY)+'d ago';return fdate(ts);}
+
+/* ============ form helpers ============ */
+const fld=(label,inner,err,cls='')=>`<label class="field ${cls}"><span class="lbl">${label}</span>${inner}${err?`<span class="err">${esc(err)}</span>`:''}</label>`;
+const inp=(key,val,o={})=>`<input class="input" id="m-${key}" data-d="${key}" value="${esc(val==null?'':val)}" type="${o.type||'text'}" placeholder="${esc(o.ph||'')}" autocomplete="off" ${o.attrs||''}>`;
+const sel=(key,val,opts,o={})=>`<select class="select" id="m-${key}" data-d="${key}" ${o.rr?'data-rr="1"':''}>${opts.map(x=>{const [v,l]=Array.isArray(x)?x:[x,x];return `<option value="${esc(v)}" ${String(v)===String(val)?'selected':''}>${esc(l)}</option>`;}).join('')}</select>`;
+const ta=(key,val,o={})=>`<textarea class="textarea" id="m-${key}" data-d="${key}" rows="${o.rows||3}" placeholder="${esc(o.ph||'')}">${esc(val==null?'':val)}</textarea>`;
+const swt=(id,checked,attrs)=>`<label class="switch"><input type="checkbox" id="${id}" ${checked?'checked':''} ${attrs||''}><i></i></label>`;
+const err=k=>(UI.modal&&UI.modal.err&&UI.modal.err[k])||'';
+const emptyState=(title,sub,btn)=>`<div class="empty">${ic('inbox',30)}<b>${esc(title)}</b><span>${esc(sub||'')}</span>${btn||''}</div>`;
+const pageHead=(title,sub,actions)=>`<div class="page-head"><div><h1>${esc(title)}</h1>${sub?`<p>${esc(sub)}</p>`:''}</div><div class="sp"></div><div class="row wrap">${actions||''}</div></div>`;
+const mi=(label,act,o={})=>`<button type="button" data-act="${act}" ${Object.entries(o.d||{}).map(([k,v])=>`data-${k}="${esc(v)}"`).join(' ')} ${o.keep?'data-keep="1"':''} class="${o.danger?'danger':''}" role="menuitem">${o.icon?ic(o.icon,16):''}<span>${label}</span></button>`;
+const dd=(el)=>el.dataset;
+
+/* ============ focus-preserving render ============ */
+function withFocus(fn){
+  const a=document.activeElement;
+  const k=a&&a.id&&a.matches&&a.matches('input,textarea,select')?{id:a.id,s:a.selectionStart,e:a.selectionEnd}:null;
+  const ks=$$('[data-keepscroll]').map(e=>[e.dataset.keepscroll,e.scrollTop,e.scrollLeft]);
+  fn();
+  ks.forEach(([id,t,l])=>{const e=document.querySelector('[data-keepscroll="'+id+'"]');if(e){e.scrollTop=t;e.scrollLeft=l;}});
+  if(k){const e=document.getElementById(k.id);if(e){e.focus();try{if(k.s!=null)e.setSelectionRange(k.s,k.e);}catch(_){}}}
+}
+
+/* ============ menus / modals / toasts ============ */
+function openMenu(el,name,d){const r=el.getBoundingClientRect();UI.menu={name,d:d||{},rect:{l:r.left,r:r.right,t:r.top,b:r.bottom},align:el.dataset.align||'right'};renderMenu();}
+function closeMenu(){if(UI.menu){UI.menu=null;renderMenu();}}
+function renderMenu(){
+  const r=$('#menu-root');if(!r)return;
+  if(!UI.menu){r.innerHTML='';return;}
+  const html=MENUS[UI.menu.name]?MENUS[UI.menu.name](UI.menu.d):'';
+  r.innerHTML='<div class="menu" id="menu-box" style="visibility:hidden;left:0;top:0" role="menu">'+html+'</div>';
+  const b=$('#menu-box'),w=b.offsetWidth,h=b.offsetHeight,m=UI.menu.rect;
+  let left=UI.menu.align==='left'?m.l:m.r-w;left=Math.max(8,Math.min(left,innerWidth-w-8));
+  let top=m.b+6;if(top+h>innerHeight-8)top=Math.max(8,m.t-h-6);
+  b.style.left=left+'px';b.style.top=top+'px';b.style.visibility='visible';
+}
+function openModal(cfg){UI.modal=Object.assign({d:{},err:{}},cfg);renderModal();setTimeout(()=>{const f=$('#modal-root [data-autofocus]')||$('#modal-root input:not([type=checkbox]),#modal-root select,#modal-root textarea');if(f)f.focus();},30);}
+function closeModal(){UI.modal=null;renderModal();}
+function renderModal(){
+  const m=UI.modal,r=$('#modal-root');if(!r)return;
+  if(!m){r.innerHTML='';return;}
+  withFocus(()=>{r.innerHTML=`<div class="overlay" data-act="modal-bg"><form class="modal ${m.wide?'wide':''}" data-submit="modal" novalidate role="dialog" aria-modal="true" aria-label="${esc(m.title)}"><div class="modal-h"><h3>${esc(m.title)}</h3><button type="button" class="iconbtn" data-act="modal-close" aria-label="Close">${ic('x')}</button></div><div class="modal-b">${m.body()}</div><div class="modal-f">${m.foot?m.foot():`<button type="button" class="btn" data-act="modal-close">Cancel</button><button class="btn ${m.danger?'bad':'pri'}" type="submit">${esc(m.ok||'Save')}</button>`}</div></form></div>`;});
+}
+function confirmModal(title,text,okLabel,onOk,danger=true){
+  openModal({title,ok:okLabel,danger,body:()=>`<p>${text}</p>`,onSubmit:()=>{onOk();return true;}});
+}
+function toast(msg,kind){const r=$('#toast-root');if(!r)return;const t=document.createElement('div');t.className='toast '+(kind||'');t.innerHTML=(kind==='bad'?ic('info',16):ic('check',16))+'<span>'+esc(msg)+'</span>';r.appendChild(t);setTimeout(()=>t.remove(),3600);}
+function copyText(text,label){
+  const done=()=>toast((label||'Text')+' copied');
+  const fallback=()=>openModal({title:'Copy manually',ok:'Done',body:()=>`<p class="muted">Your browser blocked clipboard access. Select the text below and copy it.</p><textarea class="textarea" id="m-copy" rows="10" readonly data-autofocus>${esc(text)}</textarea>`,onSubmit:()=>true});
+  try{navigator.clipboard.writeText(text).then(done,fallback);}catch(e){fallback();}
+}
+
+/* ============ simulation engine ============ */
+const TRIGGERS={
+  customer_replied:{label:'Customer replied',icon:'message',desc:'When a contact sends a message'},
+  contact_created:{label:'Contact created',icon:'user',desc:'When a new contact is added'},
+  tag_added:{label:'Tag added',icon:'tag',desc:'When a tag is added to a contact'},
+  opp_stage:{label:'Opportunity stage changed',icon:'kanban',desc:'When a deal moves to a stage'},
+  appt_booked:{label:'Appointment booked',icon:'calendar',desc:'When an appointment is created'}
+};
+const ACTIONS={
+  sms:{label:'Send SMS',icon:'message',cls:'msg',desc:'Simulated text message'},
+  email:{label:'Send email',icon:'mail',cls:'msg',desc:'Simulated email'},
+  add_tag:{label:'Add tag',icon:'tag',cls:'',desc:'Add a tag to the contact'},
+  remove_tag:{label:'Remove tag',icon:'tag',cls:'',desc:'Remove a tag from the contact'},
+  wait:{label:'Wait',icon:'clock',cls:'',desc:'Pause before the next step'},
+  create_task:{label:'Create task',icon:'check',cls:'',desc:'Add a task to the task list'},
+  move_stage:{label:'Move opportunity stage',icon:'kanban',cls:'',desc:'Move the contact\'s open deal'},
+  notify:{label:'Internal notification',icon:'bell',cls:'',desc:'Notify your team inside the app'}
+};
+const defaultCfg=t=>({
+  sms:{message:'Hi {{contact.first_name}}, this is {{business.name}}. Thanks for reaching out!'},
+  email:{subject:'Thanks from {{business.name}}',body:'Hi {{contact.first_name}},\n\nThanks for getting in touch. We will follow up shortly.'},
+  add_tag:{tag:''},remove_tag:{tag:''},wait:{amount:1,unit:'days'},
+  create_task:{title:'Follow up with {{contact.first_name}} {{contact.last_name}}',dueDays:1},
+  move_stage:{stage:''},notify:{message:'Follow up with {{contact.first_name}} {{contact.last_name}}'}
+}[t]||{});
+const fill=(t,c)=>String(t||'').replace(/\{\{\s*contact\.first_name\s*\}\}/g,c?c.firstName:'there').replace(/\{\{\s*contact\.last_name\s*\}\}/g,c?c.lastName:'').replace(/\{\{\s*business\.name\s*\}\}/g,DB.biz.name);
+function condText(cf){
+  const v='"'+(cf.value||'…')+'"';
+  if(cf.field==='tag')return 'Contact tag '+(cf.op==='has'?'includes ':'does not include ')+v;
+  if(cf.field==='source')return 'Source '+(cf.op==='is'?'is ':'is not ')+v;
+  if(cf.field==='project')return 'Project type '+(cf.op==='is'?'is ':'is not ')+v;
+  if(cf.field==='budget')return 'Estimated budget '+(cf.op==='gt'?'is above ':'is below ')+money(cf.value);
+  return 'Condition';
+}
+function evalCond(cf,c){
+  if(!c)return false;const v=String(cf.value||'').toLowerCase();
+  if(cf.field==='tag'){const h=(c.tags||[]).some(t=>t.toLowerCase()===v);return cf.op==='has'?h:!h;}
+  if(cf.field==='source'){const m=String(c.source||'').toLowerCase()===v;return cf.op==='is'?m:!m;}
+  if(cf.field==='project'){const m=String((c.custom||{}).cf1||'').toLowerCase()===v;return cf.op==='is'?m:!m;}
+  if(cf.field==='budget'){const b=+((c.custom||{}).cf2)||0,n=+cf.value||0;return cf.op==='gt'?b>n:b<n;}
+  return false;
+}
+function nodeSummary(n){
+  const c=n.cfg||{};
+  switch(n.type){
+    case 'sms':return c.message||'No message yet';
+    case 'email':return c.subject||'No subject yet';
+    case 'add_tag':return c.tag?'Tag: '+c.tag:'Choose a tag';
+    case 'remove_tag':return c.tag?'Tag: '+c.tag:'Choose a tag';
+    case 'wait':return 'Wait '+(c.amount||0)+' '+(c.unit||'days');
+    case 'create_task':return (c.title||'New task')+' · due in '+(c.dueDays||0)+'d';
+    case 'move_stage':return c.stage?'Move to '+c.stage:'Choose a stage';
+    case 'notify':return c.message||'No message yet';
+  }
+  return '';
+}
+function autoMsg(c,ch,text){
+  if(!c)return;let cv=DB.convos.find(x=>x.contactId===c.id);
+  if(!cv){cv={id:uid('cv'),contactId:c.id,status:'open',unread:false,assignee:DB.meId,messages:[],lastAt:Date.now()};DB.convos.push(cv);}
+  cv.messages.push({id:uid('m'),dir:'out',ch,text,at:Date.now(),auto:true});cv.lastAt=Date.now();
+}
+function execNode(n,ctx){
+  const c=ctx.contact,cf=n.cfg||{},ap=ctx.apply;const o={id:n.id,kind:'act',text:''};
+  switch(n.type){
+    case 'sms':{const t=fill(cf.message,c);o.text='SMS to '+cname(c)+(c&&c.phone?' ('+c.phone+')':'')+': "'+t+'". Simulated, not sent.';if(ap)autoMsg(c,'sms',t);break;}
+    case 'email':{const t=fill(cf.subject,c);o.text='Email to '+((c&&c.email)||cname(c))+': "'+t+'". Simulated, not sent.';if(ap)autoMsg(c,'email','Subject: '+t+'\n\n'+fill(cf.body,c));break;}
+    case 'add_tag':{o.text='Add tag "'+(cf.tag||'')+'"'+(ap?'':' (dry run, not applied)');if(ap&&c&&cf.tag&&!c.tags.includes(cf.tag))c.tags.push(cf.tag);break;}
+    case 'remove_tag':{o.text='Remove tag "'+(cf.tag||'')+'"'+(ap?'':' (dry run, not applied)');if(ap&&c)c.tags=c.tags.filter(t=>t!==cf.tag);break;}
+    case 'wait':{o.text='Wait '+cf.amount+' '+cf.unit+'. Skipped in the simulation.';break;}
+    case 'create_task':{const t=fill(cf.title,c);o.text='Create task "'+t+'", due in '+(cf.dueDays||0)+' day(s)'+(ap?'':' (dry run, not created)');if(ap)DB.tasks.unshift({id:uid('t'),title:t,contactId:c?c.id:null,due:ymd(Date.now()+(+cf.dueDays||0)*DAY),done:false,ownerId:DB.meId,createdAt:Date.now()});break;}
+    case 'create_opp':{const p=DB.pipelines[0];const st=p.stages.find(s=>s.name===cf.stage)||p.stages[0];o.text='Create opportunity "'+fill(cf.name,c)+'" ('+money(cf.value)+') in '+st.name+(ap?'':' (dry run, not applied)');
+      if(ap&&c){DB.opps.push({id:uid('o'),name:fill(cf.name,c),contactId:c.id,value:+cf.value||0,pipelineId:p.id,stageId:st.id,status:'open',ownerId:DB.meId,closeDate:ymd(Date.now()+30*DAY),createdAt:Date.now(),stageSince:Date.now(),ord:999,source:c.source});}break;}
+    case 'move_stage':{const p=DB.pipelines[0];const st=p.stages.find(s=>s.name===cf.stage);const op=c&&DB.opps.find(x=>x.contactId===c.id&&x.pipelineId===p.id&&x.status==='open');
+      o.text=op&&st?'Move "'+op.name+'" to '+st.name+(ap?'':' (dry run, not applied)'):'No open deal or stage found. Nothing to move.';if(ap&&op&&st){op.stageId=st.id;op.stageSince=Date.now();}break;}
+    case 'notify':{const t=fill(cf.message,c);o.text='Internal notification: "'+t+'"'+(ap?'':' (dry run, not applied)');if(ap)notify(t,'contacts');break;}
+    default:o.text=n.type;
+  }
+  return o;
+}
+function execSteps(steps,ctx,out){
+  for(const n of steps){
+    if(n.type==='if_else'){const r=evalCond(n.cfg,ctx.contact);out.push({id:n.id,kind:'logic',text:'Condition: '+condText(n.cfg)+' → '+(r?'Yes':'No')});execSteps(r?(n.yes||[]):(n.no||[]),ctx,out);}
+    else out.push(execNode(n,ctx));
+  }
+}
+function runWorkflow(wf,contact,apply){
+  const out=[{id:'trigger',kind:'trg',text:'Trigger: '+TRIGGERS[wf.trigger.type].label}];
+  execSteps(wf.steps,{contact,apply},out);return out;
+}
+function trigMatch(t,p){
+  const c=t.cfg||{};
+  if(t.type==='customer_replied'){const ks=String(c.keyword||'').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);return !ks.length||ks.some(k=>String(p.text||'').toLowerCase().includes(k));}
+  if(t.type==='tag_added')return !c.tag||c.tag===p.tag;
+  if(t.type==='opp_stage')return !c.stage||c.stage===p.stage;
+  return true;
+}
+function fire(type,p){
+  const names=[];
+  DB.workflows.filter(w=>w.status==='published'&&w.trigger.type===type&&trigMatch(w.trigger,p)).forEach(w=>{
+    const c=cfind(p.contactId);const steps=runWorkflow(w,c,true);
+    w.runs.unshift({id:uid('r'),at:Date.now(),contactId:p.contactId,steps});w.runs=w.runs.slice(0,25);w.execs=(w.execs||0)+1;
+    log('flow','Workflow "'+w.name+'" ran for '+cname(c)+' (simulated)',p.contactId);names.push(w.name);
+  });
+  if(names.length)setTimeout(()=>toast('Workflow ran (simulated): '+names.join(', ')),250);
+  return names;
+}
+function findNode(wf,id,arr){
+  arr=arr||wf.steps;
+  for(let i=0;i<arr.length;i++){
+    if(arr[i].id===id)return {arr,idx:i,node:arr[i]};
+    if(arr[i].type==='if_else'){const r=findNode(wf,id,arr[i].yes)||findNode(wf,id,arr[i].no);if(r)return r;}
+  }
+  return null;
+}
+function walkNodes(arr,fn){arr.forEach(n=>{fn(n);if(n.type==='if_else'){walkNodes(n.yes||[],fn);walkNodes(n.no||[],fn);}});}
+function countNodes(wf){let c=0;walkNodes(wf.steps,()=>c++);return c;}
+/* ============ shell ============ */
+const ROUTES=[
+  {id:'dashboard',label:'Dashboard',icon:'home'},
+  {id:'contacts',label:'Contacts',icon:'users'},
+  {id:'opportunities',label:'Opportunities',icon:'kanban'},
+  {id:'conversations',label:'Conversations',icon:'message'},
+  {id:'calendars',label:'Calendars',icon:'calendar'},
+  {id:'automation',label:'Automation',icon:'zap'}
+];
+const NOPAD=()=>UI.route==='conversations'||(UI.route==='automation'&&UI.wf.id);
+function view(){
+  switch(UI.route){
+    case 'dashboard':return viewDashboard();
+    case 'contacts':return viewContacts();
+    case 'contact':return viewContact();
+    case 'opportunities':return viewOpps();
+    case 'conversations':return viewConv();
+    case 'calendars':return viewCal();
+    case 'automation':return viewAuto();
+  }
+  return '';
+}
+function crumbs(){
+  const b={l:DB.biz.name,r:'dashboard'};
+  const r=UI.route;
+  if(r==='dashboard')return [b,{l:'Dashboard'}];
+  if(r==='contact'){const c=cfind(UI.contactId);return [b,{l:'Contacts',r:'contacts'},{l:cname(c)}];}
+  if(r==='automation'&&UI.wf.id){const w=DB.workflows.find(x=>x.id===UI.wf.id);return [b,{l:'Automation',act:'wf-close'},{l:w?w.name:'Workflow'}];}
+  const lbl=ROUTES.find(x=>x.id===r).label;return [b,{l:lbl}];
+}
+function crumbsHtml(){
+  const cs=crumbs();
+  return cs.map((c,i)=>{const last=i===cs.length-1;
+    const part=last?`<b aria-current="page">${esc(c.l)}</b>`:`<button type="button" data-act="${c.act||'nav'}" ${c.r?`data-r="${c.r}"`:''}>${esc(c.l)}</button>`;
+    return part+(last?'':`<span aria-hidden="true">${ic('chevR',12)}</span>`);}).join('');
+}
+function sidebar(){
+  const un=unreadCount();
+  return `<aside class="side" aria-label="Main navigation">
+    <button class="acct" data-act="menu" data-menu="acct" data-align="left" title="${esc(DB.biz.name)}"><span class="acct-av" style="background:${esc(DB.biz.color)}">${esc(inits(DB.biz.name))}</span><span class="acct-txt"><b>${esc(DB.biz.name)}</b><span>Practice account</span></span><span class="lbl">${ic('chevD',16)}</span></button>
+    <nav class="nav" aria-label="Modules">${ROUTES.map(x=>{const on=UI.route===x.id||(x.id==='contacts'&&UI.route==='contact');
+      return `<button type="button" class="${on?'on':''}" data-act="nav" data-r="${x.id}" title="${x.label}" ${on?'aria-current="page"':''}>${ic(x.icon,19)}<span class="lbl">${x.label}</span>${x.id==='conversations'&&un?`<span class="badge">${un}</span>`:''}</button>`;}).join('')}</nav>
+    <div class="side-foot"><div class="simtag">Simulator: practice data only. Nothing is sent, called or connected.</div>
+    <button type="button" class="collapse-btn" data-act="collapse" title="Collapse sidebar">${ic('sidebar')}<span class="lbl">Collapse</span></button></div></aside>`;
+}
+function gsResults(){
+  const q=UI.gs.q.trim().toLowerCase();if(!UI.gs.open||!q)return '';
+  const has=s=>String(s||'').toLowerCase().includes(q);
+  const groups=[
+    ['Contacts','user','contact',DB.contacts.filter(c=>has(cname(c))||has(c.email)||has(c.phone)||has(c.company)).slice(0,4).map(c=>[c.id,cname(c),c.email])],
+    ['Opportunities','kanban','opp',DB.opps.filter(o=>has(o.name)).slice(0,3).map(o=>[o.id,o.name,money(o.value)+' · '+o.status])],
+    ['Appointments','calendar','appt',DB.appts.filter(a=>has(a.title)).slice(0,3).map(a=>[a.id,a.title,fday(a.start)+' '+ftime(a.start)])],
+    ['Workflows','zap','wf',DB.workflows.filter(w=>has(w.name)).slice(0,2).map(w=>[w.id,w.name,w.status])]
+  ].filter(g=>g[3].length);
+  if(!groups.length)return `<div class="gs-res"><div class="empty" style="padding:18px">No matches for "${esc(UI.gs.q)}"</div></div>`;
+  return `<div class="gs-res" role="listbox">${groups.map(g=>`<h5>${g[0]}</h5>${g[3].map(r=>`<button type="button" data-act="gs-go" data-t="${g[2]}" data-id="${esc(r[0])}">${ic(g[1],16)}<span class="trunc"><b>${esc(r[1])}</b><br><span class="muted sm">${esc(r[2])}</span></span></button>`).join('')}`).join('')}</div>`;
+}
+function topbar(){
+  const unread=DB.notifs.filter(n=>!n.read).length,u=me();
+  return `<header class="top"><button type="button" class="iconbtn burger" data-act="side-toggle" aria-label="Open menu">${ic('menu')}</button>
+    <div class="gs">${ic('search',16)}<input class="input" id="gs" data-live="gs" value="${esc(UI.gs.q)}" placeholder="Search contacts, deals, workflows…  ( / )" autocomplete="off" aria-label="Global search">${gsResults()}</div>
+    <div class="sp"></div>
+    <button type="button" class="simpill" data-act="about" title="About this simulator">${ic('shield',14)}<span>Simulator</span></button>
+    <button type="button" class="iconbtn bd" data-act="menu" data-menu="bell" aria-label="Notifications">${ic('bell')}${unread?`<span class="dot">${unread}</span>`:''}</button>
+    <button type="button" class="iconbtn bd hide-sm" data-act="about" aria-label="Help and about">${ic('info')}</button>
+    <button type="button" class="iconbtn" data-act="menu" data-menu="user" aria-label="Account menu" style="width:auto">${av(u.name,'',u.color)}</button></header>`;
+}
+function shell(){
+  return `<div class="app ${UI.collapsed?'collapsed':''} ${UI.side?'side-open':''}">${sidebar()}<div class="scrim" data-act="side-close"></div>
+    <div class="main">${topbar()}<div class="subbar"><nav class="crumbs" aria-label="Breadcrumb">${crumbsHtml()}</nav><div class="sp"></div><span class="muted sm hide-sm">Simulated data. No real SMS, email, calls or integrations.</span></div>
+    <main class="content ${NOPAD()?'nopad':''}" data-keepscroll="content-${UI.route}-${UI.contactId||''}">${UI.loading?loaderHtml():view()}</main></div></div>`;
+}
+function render(){
+  const rt=document.getElementById('root');
+  withFocus(()=>{rt.innerHTML=UI.authed?shell():homeView();});
+  renderMenu();
+  if(UI.conv.scrollBottom){const t=document.getElementById('thread');if(t){t.scrollTop=t.scrollHeight;UI.conv.scrollBottom=false;}}
+}
+function go(r,o={}){
+  const changed=(o.contactId?'contact':r)!==UI.route||(o.contactId||null)!==UI.contactId;
+  UI.route=o.contactId?'contact':r;UI.contactId=o.contactId||null;UI.side=false;UI.menu=null;UI.gs.open=false;
+  if(!o.keep){UI.wf.id=null;UI.wf.test=null;}
+  if(r==='contacts'&&!o.contactId)UI.contacts.sel=[];
+  if(UI.route==='contact')UI.contacts.tab='timeline';
+  if(changed)startLoading(o.contactId?'contact':(ROUTES.find(x=>x.id===r)||{label:'page'}).label);else render();
+  const c=document.querySelector('.content');if(c)c.scrollTop=0;
+}
+function applyTheme(){const t=DB.prefs.theme,r=document.documentElement;if(t==='light'||t==='dark')r.setAttribute('data-theme',t);else r.removeAttribute('data-theme');}
+
+/* ============ shell menus ============ */
+MENUS.acct=()=>`<div style="padding:8px 10px"><b>${esc(DB.biz.name)}</b><div class="muted sm">${esc(DB.biz.email)}</div></div><hr>
+  ${mi('About this simulator','about',{icon:'shield'})}<hr>${mi('Reset sample data','reset',{icon:'refresh',danger:true})}`;
+MENUS.user=()=>{const u=me(),t=DB.prefs.theme;
+  return `<div style="padding:8px 10px"><b>${esc(u.name)}</b><div class="muted sm">${esc(u.title)} · ${esc(u.email)}</div></div><hr>
+  <h5>Theme</h5>
+  ${mi((t==='light'?'✓ ':'')+'Light','theme',{icon:'sun',d:{t:'light'}})}${mi((t==='dark'?'✓ ':'')+'Dark','theme',{icon:'moon',d:{t:'dark'}})}${mi((t==='system'?'✓ ':'')+'Match system','theme',{icon:'grid',d:{t:'system'}})}<hr>${mi('Sign out','signout',{icon:'x'})}
+  ${mi('Reset sample data','reset',{icon:'refresh',danger:true})}`;};
+MENUS.bell=()=>{
+  const n=DB.notifs.slice(0,8);
+  return `<div class="row" style="padding:8px 10px"><b class="sp">Notifications</b>${DB.notifs.some(x=>!x.read)?`<button type="button" class="btn s ghost" data-act="notif-read" data-keep="1">Mark all read</button>`:''}</div><hr>
+  ${n.length?n.map(x=>`<button type="button" data-act="notif-go" data-id="${x.id}"><span class="dotc" style="background:${x.read?'transparent':'var(--accent)'}"></span><span><span style="font-weight:${x.read?500:700}">${esc(x.text)}</span><span class="mi-sub">${rel(x.at)}</span></span></button>`).join(''):'<div class="empty" style="padding:18px">You are all caught up</div>'}
+  ${n.length?`<hr>${mi('Clear all','notif-clear',{icon:'trash'})}`:''}`;
+};
+A['nav']=el=>go(el.dataset.r);
+A['side-toggle']=()=>{UI.side=!UI.side;render();};
+A['side-close']=()=>{UI.side=false;render();};
+A['collapse']=()=>{UI.collapsed=!UI.collapsed;render();};
+A['menu']=el=>openMenu(el,el.dataset.menu,Object.assign({},el.dataset));
+A['modal-close']=()=>closeModal();
+A['modal-bg']=(el,e)=>{if(e.target===el)closeModal();};
+A['theme']=el=>{DB.prefs.theme=el.dataset.t;applyTheme();commit();};
+A['notif-read']=()=>{DB.notifs.forEach(n=>n.read=true);save();render();};
+A['notif-clear']=()=>{DB.notifs=[];commit();};
+A['notif-go']=el=>{const n=DB.notifs.find(x=>x.id===el.dataset.id);if(n){n.read=true;save();if(n.route)go(n.route);else render();}};
+A['reset']=()=>confirmModal('Reset sample data','This replaces everything in the simulator (contacts, deals, tasks, messages, appointments and workflows) with the original sample data.','Reset data',()=>{DB=seed();applyTheme();UI.contactId=null;UI.conv.id=null;UI.wf.id=null;UI.opps.pid='p1';UI.route='dashboard';commit();toast('Sample data restored');});
+A['about']=()=>openModal({title:'About this simulator',ok:'Got it',wide:true,body:()=>`
+  <p>This is a practice environment inspired by the layout and workflow of all-in-one CRM platforms. It is <b>not</b> connected to any real service.</p>
+  <div class="grid g-eq" style="gap:12px">
+    <div class="card card-b"><h4 style="margin-bottom:8px">Works inside this page</h4><ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px"><li>Add, edit and delete contacts, deals, tasks, appointments and workflows</li><li>Drag deals between pipeline stages</li><li>Workflow test runs and in-app triggers</li><li>Search, filters, sorting and notifications</li></ul></div>
+    <div class="card card-b"><h4 style="margin-bottom:8px">Simulated only</h4><ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px"><li>SMS, email and phone calls are never sent or placed</li><li>Calendar sync and other integrations are not connected</li><li>Data stays in this browser only and is not shared with anyone</li></ul></div>
+  </div>
+  <p class="muted sm">Everything here is made-up sample data for a fictional remodeling company. Use "Reset sample data" in the account menu to start over.</p>`,onSubmit:()=>true});
+A['gs-go']=el=>{
+  const t=el.dataset.t,id=el.dataset.id;UI.gs={q:'',open:false};
+  if(t==='contact')go('contacts',{contactId:id});
+  else if(t==='opp'){const o=DB.opps.find(x=>x.id===id);if(o)UI.opps.pid=o.pipelineId;go('opportunities');if(o)openOppModal(id);}
+  else if(t==='appt'){const a=DB.appts.find(x=>x.id===id);if(a)UI.cal.date=a.start;go('calendars');openApptModal(id);}
+  else if(t==='wf'){go('automation');UI.wf.id=id;UI.wf.sel='trigger';UI.wf.panel='config';render();}
+};
+LIVE.gs=t=>{UI.gs.q=t.value;UI.gs.open=true;render();};
+A['m-tag-add']=()=>{const d=UI.modal.d;const v=String(d.tagInput||'').trim().replace(/,+$/,'');if(v){d.tags=d.tags||[];if(!d.tags.some(t=>t.toLowerCase()===v.toLowerCase()))d.tags.push(v);}d.tagInput='';renderModal();const e=document.getElementById('m-tagInput');if(e)e.focus();};
+A['m-tag-del']=el=>{UI.modal.d.tags.splice(+el.dataset.i,1);renderModal();};
+const tagEditor=(d,hint)=>`<div class="field"><span class="lbl">Tags</span><div class="row wrap" style="gap:6px">${(d.tags||[]).map((t,i)=>`<span class="chip">${esc(t)}<button type="button" data-act="m-tag-del" data-i="${i}" aria-label="Remove tag ${esc(t)}">${ic('x',12)}</button></span>`).join('')}</div>
+  <div class="row"><input class="input" id="m-tagInput" data-d="tagInput" value="${esc(d.tagInput||'')}" placeholder="Type a tag and press Enter" list="taglist" autocomplete="off"><datalist id="taglist">${allTags().map(t=>`<option value="${esc(t)}">`).join('')}</datalist><button type="button" class="btn" data-act="m-tag-add">Add</button></div>${hint?`<span class="hint">${hint}</span>`:''}</div>`;
+
+/* ============ global events ============ */
+document.addEventListener('click',e=>{
+  if(UI.menu&&!e.target.closest('.menu'))closeMenu();
+  if(UI.gs.open&&!e.target.closest('.gs')){UI.gs.open=false;render();}
+  const el=e.target.closest('[data-act]');if(!el)return;
+  const fn=A[el.dataset.act];if(!fn)return;
+  if(el.closest('.menu')&&!el.dataset.keep)closeMenu();
+  fn(el,e);
+});
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset&&t.dataset.d&&UI.modal){setPath(UI.modal.d,t.dataset.d,t.type==='checkbox'?t.checked:t.value);if(t.dataset.rr)renderModal();}
+  if(t.dataset&&t.dataset.live&&LIVE[t.dataset.live])LIVE[t.dataset.live](t,e);
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset&&t.dataset.d&&UI.modal&&(t.tagName==='SELECT'||t.type==='checkbox')){setPath(UI.modal.d,t.dataset.d,t.type==='checkbox'?t.checked:t.value);if(t.dataset.rr)renderModal();}
+  if(t.dataset&&t.dataset.chg&&CHG[t.dataset.chg])CHG[t.dataset.chg](t,e);
+});
+document.addEventListener('submit',e=>{
+  e.preventDefault();const f=e.target,n=f.dataset.submit;
+  if(n==='modal'){const m=UI.modal;if(m&&m.onSubmit&&m.onSubmit(f)!==false)closeModal();else if(m)renderModal();return;}
+  if(SUB[n])SUB[n](f,e);
+});
+document.addEventListener('keydown',e=>{
+  const t=e.target;
+  if(e.key==='Escape'){
+    if(UI.modal){closeModal();return;}
+    if(UI.menu){closeMenu();return;}
+    if(UI.gs.open){UI.gs.open=false;render();return;}
+    if(UI.side){UI.side=false;render();return;}
+  }
+  if(t.id==='m-tagInput'&&(e.key==='Enter'||e.key===',')){e.preventDefault();A['m-tag-add']();return;}
+  if(t.id==='composer'&&e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();A['conv-send']();return;}
+  if(e.key==='/'&&!/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)&&!UI.modal){e.preventDefault();const g=document.getElementById('gs');if(g)g.focus();}
+});
+window.addEventListener('resize',()=>{if(UI.menu)closeMenu();});
+document.addEventListener('scroll',e=>{if(UI.menu&&e.target.closest&&e.target.closest('.content'))closeMenu();},true);
+/* drag and drop (opportunity cards, form fields) */
+document.addEventListener('dragstart',e=>{
+  const el=e.target.closest&&e.target.closest('[data-drag]');if(!el)return;
+  UI.drag={kind:el.dataset.drag,id:el.dataset.id};
+  e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',el.dataset.id);}catch(_){}
+  el.classList.add('dragging');
+});
+document.addEventListener('dragend',()=>{UI.drag=null;$$('.dragging').forEach(x=>x.classList.remove('dragging'));$$('.over,.dragover').forEach(x=>x.classList.remove('over','dragover'));});
+document.addEventListener('dragover',e=>{
+  if(!UI.drag)return;const z=e.target.closest('[data-drop]');if(!z||z.dataset.drop!==UI.drag.kind)return;
+  e.preventDefault();e.dataTransfer.dropEffect='move';
+  $$('.over,.dragover').forEach(x=>{if(x!==z)x.classList.remove('over','dragover');});
+  z.classList.add(z.dataset.drop==='opp'?'over':'dragover');
+});
+document.addEventListener('drop',e=>{
+  if(!UI.drag)return;const z=e.target.closest('[data-drop]');if(!z||z.dataset.drop!==UI.drag.kind)return;
+  e.preventDefault();const d=UI.drag;UI.drag=null;
+  $$('.over,.dragover').forEach(x=>x.classList.remove('over','dragover'));
+  if(DROP[d.kind])DROP[d.kind](d.id,z,e);
+});
+/* ============ shared: tasks, deals ============ */
+const oppStatus=o=>{const n=stageName(o.pipelineId,o.stageId);return n==='Won'?'won':n==='Lost'?'lost':'open';};
+const stageId=n=>DB.pipelines[0].stages.find(s=>s.name===n).id;
+A['noop']=()=>{};
+const ownerOpts=()=>DB.team.map(u=>[u.id,u.name]);
+const contactOpts=(blank)=>(blank?[['','No contact']]:[]).concat(DB.contacts.slice().sort((a,b)=>cname(a).localeCompare(cname(b))).map(c=>[c.id,cname(c)]));
+const dueState=t=>{const today=ymd(Date.now());return t.done?'':t.due<today?'bad':t.due===today?'warn':'';};
+const dueLabel=t=>{const today=ymd(Date.now());if(t.due===today)return 'Today';if(t.due===ymd(Date.now()+DAY))return 'Tomorrow';return fdate(mk(t.due));};
+
+function taskRow(t,withContact=true){
+  const c=cfind(t.contactId),st=dueState(t);
+  return `<div class="feed-i" style="align-items:center">
+    <button type="button" class="iconbtn bd" data-act="task-toggle" data-id="${t.id}" aria-label="${t.done?'Mark task open':'Mark task done'}" style="${t.done?'background:var(--good);color:#fff;border-color:var(--good)':''}">${t.done?ic('check',16):''}</button>
+    <div class="sp" style="min-width:0"><button type="button" class="btn ghost" data-act="task-edit" data-id="${t.id}" style="padding:0;font-weight:700;white-space:normal;text-align:left;${t.done?'text-decoration:line-through;color:var(--muted)':''}">${esc(t.title)}</button>
+      ${withContact&&c?`<div class="sm"><button type="button" class="btn ghost" data-act="c-open" data-id="${c.id}" style="padding:0;font-size:12px;color:var(--accent)">${esc(cname(c))}</button></div>`:''}</div>
+    <span class="pill ${st}">${t.done?'Done':esc(dueLabel(t))}</span>
+    <button type="button" class="iconbtn" data-act="task-del" data-id="${t.id}" aria-label="Delete task">${ic('trash',16)}</button></div>`;
+}
+function openTaskModal(id,contactId){
+  const t=id?DB.tasks.find(x=>x.id===id):null;
+  const d=t?clone(t):{title:'',contactId:contactId||'',due:ymd(Date.now()+DAY),ownerId:DB.meId};
+  openModal({title:t?'Edit task':'Add task',ok:t?'Save changes':'Add task',d,
+    body:()=>{const d=UI.modal.d;return `<div class="fgrid">
+      ${fld('Task title *',inp('title',d.title,{ph:'e.g. Call Maria about her estimate',attrs:'data-autofocus'}),err('title'),'full')}
+      ${fld('Related contact',sel('contactId',d.contactId,contactOpts(true)))}
+      ${fld('Due date *',inp('due',d.due,{type:'date'}),err('due'))}
+      ${fld('Assigned to',sel('ownerId',d.ownerId,ownerOpts()))}</div>`;},
+    onSubmit:()=>{const d=UI.modal.d,e={};
+      if(!String(d.title).trim())e.title='Enter a task title.';
+      if(!d.due)e.due='Choose a due date.';
+      if(Object.keys(e).length){UI.modal.err=e;return false;}
+      if(t){Object.assign(t,{title:d.title.trim(),contactId:d.contactId||null,due:d.due,ownerId:d.ownerId});toast('Task updated');}
+      else{DB.tasks.unshift({id:uid('t'),title:d.title.trim(),contactId:d.contactId||null,due:d.due,ownerId:d.ownerId,done:false,createdAt:Date.now()});log('task','Task added: '+d.title.trim(),d.contactId);toast('Task added');}
+      commit();return true;}});
+}
+A['task-add']=el=>openTaskModal(null,el.dataset.cid);
+A['task-edit']=el=>openTaskModal(el.dataset.id);
+A['task-toggle']=el=>{const t=DB.tasks.find(x=>x.id===el.dataset.id);if(!t)return;t.done=!t.done;if(t.done)log('task','Task completed: '+t.title,t.contactId);commit();toast(t.done?'Task completed':'Task reopened');};
+A['task-del']=el=>{const t=DB.tasks.find(x=>x.id===el.dataset.id);if(!t)return;DB.tasks=DB.tasks.filter(x=>x!==t);commit();toast('Task deleted');};
+
+/* ============ dashboard ============ */
+function viewDashboard(){
+  const now=Date.now(),today=ymd(now);
+  const open=DB.opps.filter(o=>oppStatus(o)==='open');
+  const won=DB.opps.filter(o=>oppStatus(o)==='won');
+  const upcoming=DB.appts.filter(a=>a.status!=='cancelled'&&a.end>=now).sort((a,b)=>a.start-b.start);
+  const tasksOpen=DB.tasks.filter(t=>!t.done).sort((a,b)=>a.due.localeCompare(b.due));
+  const overdue=tasksOpen.filter(t=>t.due<today).length;
+  const newC=DB.contacts.filter(c=>c.createdAt>now-30*DAY).length;
+  const stages=DB.pipelines[0].stages.map(s=>{const l=DB.opps.filter(o=>o.stageId===s.id);return {name:s.name,n:l.length,v:sum(l,'value')};});
+  const mx=Math.max(1,...stages.map(s=>s.v));
+  const kpi=(label,icon,val,sub,r)=>`<button type="button" class="kpi" data-act="nav" data-r="${r}"><span class="k-l">${ic(icon,16)}${label}</span><span class="k-v">${val}</span><span class="muted sm">${sub}</span></button>`;
+  const actIc={msg:'message',opp:'kanban',contact:'user',appt:'calendar',flow:'zap',task:'check'};
+  return `${pageHead('Dashboard','Welcome back, '+me().name.split(' ')[0]+'. Everything below is sample data for practice.',
+    `<button class="btn" data-act="c-add">${ic('user',16)}Add contact</button><button class="btn" data-act="o-add">${ic('dollar',16)}Add opportunity</button><button class="btn pri" data-act="appt-add">${ic('plus',16)}New appointment</button>`)}
+  <div class="grid g-kpi" style="margin-bottom:14px">
+    ${kpi('Total contacts','users',DB.contacts.length,newC+' added in the last 30 days','contacts')}
+    ${kpi('Open opportunities','kanban',open.length,money(sum(open,'value'))+' in pipeline','opportunities')}
+    ${kpi('Upcoming appointments','calendar',upcoming.length,upcoming[0]?'Next: '+fday(upcoming[0].start)+', '+ftime(upcoming[0].start):'Nothing scheduled','calendars')}
+    <button type="button" class="kpi" data-act="scroll-tasks"><span class="k-l">${ic('check',16)}Open tasks</span><span class="k-v">${tasksOpen.length}</span><span class="sm" style="color:${overdue?'var(--bad)':'var(--muted)'}">${overdue?overdue+' overdue':'None overdue'}</span></button>
+  </div>
+  <div class="grid g-dash">
+    <section class="card"><div class="card-h"><h3>Pipeline by stage</h3><span class="sp"></span><button class="btn s ghost" data-act="nav" data-r="opportunities">Open pipeline</button></div><div class="card-b">
+      ${stages.map(s=>`<div class="hbar"><span class="trunc">${esc(s.name)}</span><span class="track"><i style="width:${Math.round(s.v/mx*100)}%"></i></span><span class="num sm" style="text-align:right">${s.n} · ${money(s.v)}</span></div>`).join('')}
+      <div class="muted sm" style="margin-top:8px">Won so far: <b class="num">${money(sum(won,'value'))}</b> across ${won.length} deals</div></div></section>
+    <section class="card" id="tasks-card"><div class="card-h"><h3>My tasks</h3><span class="sp"></span><button class="btn s" data-act="task-add">${ic('plus',14)}Add task</button></div><div class="card-b">
+      ${tasksOpen.length?`<div class="feed">${tasksOpen.slice(0,7).map(t=>taskRow(t)).join('')}</div>${tasksOpen.length>7?`<div class="muted sm" style="margin-top:8px">Showing 7 of ${tasksOpen.length} open tasks.</div>`:''}`:emptyState('No open tasks','Add a task or run a workflow that creates one.')}
+      ${DB.tasks.some(t=>t.done)?`<div class="muted sm" style="margin-top:10px">${DB.tasks.filter(t=>t.done).length} completed. <button class="btn s ghost" data-act="tasks-clear">Clear completed</button></div>`:''}</div></section>
+    <section class="card"><div class="card-h"><h3>Upcoming appointments</h3><span class="sp"></span><button class="btn s ghost" data-act="nav" data-r="calendars">Calendar</button></div><div class="card-b">
+      ${upcoming.length?`<div class="feed">${upcoming.slice(0,5).map(a=>{const cal=calfind(a.calendarId);return `<button type="button" class="feed-i" data-act="appt-edit" data-id="${a.id}" style="border:0;border-bottom:1px solid var(--line);background:none;text-align:left;width:100%"><span class="dotc" style="background:${cal?cal.color:'var(--accent)'};margin-top:6px"></span><span class="sp" style="min-width:0"><b>${esc(a.title)}</b><br><span class="muted sm">${fday(a.start)} · ${ftime(a.start)}</span></span>${a.status!=='confirmed'?pill(a.status):''}</button>`;}).join('')}</div>`:emptyState('Nothing scheduled','Create an appointment to see it here.',`<button class="btn pri" data-act="appt-add">New appointment</button>`)}</div></section>
+    <section class="card"><div class="card-h"><h3>Recent activity</h3></div><div class="card-b"><div class="feed">
+      ${DB.activity.slice(0,7).map(x=>`<div class="feed-i"><span class="feed-ic ${x.type==='opp'?'good':x.type==='appt'?'warn':''}">${ic(actIc[x.type]||'info',16)}</span><div class="sp" style="min-width:0">${x.cid&&cfind(x.cid)?`<button type="button" class="btn ghost" data-act="c-open" data-id="${x.cid}" style="padding:0;text-align:left;white-space:normal;font-weight:600">${esc(x.text)}</button>`:`<span style="font-weight:600">${esc(x.text)}</span>`}<div class="muted sm">${rel(x.at)}</div></div></div>`).join('')}</div></div></section>
+  </div>`;
+}
+A['scroll-tasks']=()=>{const e=document.getElementById('tasks-card');if(e)e.scrollIntoView({behavior:'smooth',block:'center'});};
+A['tasks-clear']=()=>{DB.tasks=DB.tasks.filter(t=>!t.done);commit();toast('Completed tasks cleared');};
+
+/* ============ contacts ============ */
+const PAGE=10;
+function filteredContacts(){
+  const f=UI.contacts,q=f.q.trim().toLowerCase();
+  let l=DB.contacts.filter(c=>{
+    if(q&&!(cname(c)+' '+c.email+' '+c.phone+' '+c.company+' '+(c.tags||[]).join(' ')).toLowerCase().includes(q))return false;
+    if(f.tag&&!(c.tags||[]).includes(f.tag))return false;
+    if(f.source&&c.source!==f.source)return false;
+    return true;});
+  const k=f.sort,dir=f.dir;
+  l.sort((a,b)=>{let x=k==='name'?cname(a).toLowerCase():k==='source'?(a.source||''):a.createdAt,y=k==='name'?cname(b).toLowerCase():k==='source'?(b.source||''):b.createdAt;return (x>y?1:x<y?-1:0)*dir;});
+  return l;
+}
+function viewContacts(){
+  const f=UI.contacts,all=filteredContacts(),pages=Math.max(1,Math.ceil(all.length/PAGE));
+  if(f.page>pages)f.page=pages;
+  const rows=all.slice((f.page-1)*PAGE,f.page*PAGE);
+  const th=(k,l)=>`<th><button type="button" data-act="c-sort" data-k="${k}" aria-label="Sort by ${l}">${l}${f.sort===k?ic(f.dir>0?'up':'down',12):''}</button></th>`;
+  const allOn=rows.length&&rows.every(c=>f.sel.includes(c.id));
+  return `${pageHead('Contacts',DB.contacts.length+' contacts in this practice account',`<button class="btn pri" data-act="c-add">${ic('plus',16)}Add contact</button>`)}
+  <div class="card">
+    <div class="toolbar"><input class="input q" id="cq" data-live="cq" value="${esc(f.q)}" placeholder="Search name, email, phone, tag…" aria-label="Search contacts">
+      <select class="select" id="ctag" data-chg="ctag" aria-label="Filter by tag"><option value="">All tags</option>${allTags().map(t=>`<option ${f.tag===t?'selected':''}>${esc(t)}</option>`).join('')}</select>
+      <select class="select" id="csrc" data-chg="csrc" aria-label="Filter by source"><option value="">All sources</option>${SOURCES.map(t=>`<option ${f.source===t?'selected':''}>${esc(t)}</option>`).join('')}</select>
+      ${(f.q||f.tag||f.source)?`<button class="btn ghost s" data-act="c-clear">Clear filters</button>`:''}
+      <span class="sp"></span>
+      ${f.sel.length?`<span class="muted sm">${f.sel.length} selected</span><button class="btn s" data-act="c-bulk-tag">${ic('tag',14)}Add tag</button><button class="btn s bad" data-act="c-bulk-del">${ic('trash',14)}Delete</button>`:''}</div>
+    ${rows.length?`<div class="tbl-wrap"><table><thead><tr><th style="width:34px"><label data-act="noop" class="chk"><input type="checkbox" data-chg="c-all" ${allOn?'checked':''} aria-label="Select all on this page"></label></th>${th('name','Name')}<th class="hide-sm">Email / Phone</th><th>Tags</th>${th('source','Source')}${th('createdAt','Added')}<th style="width:44px"></th></tr></thead><tbody>
+    ${rows.map(c=>`<tr class="clk" data-act="c-open" data-id="${c.id}"><td><label data-act="noop" class="chk"><input type="checkbox" data-chg="c-sel" data-id="${c.id}" ${f.sel.includes(c.id)?'checked':''} aria-label="Select ${esc(cname(c))}"></label></td>
+      <td><div class="row">${av(cname(c))}<div style="min-width:0"><b>${esc(cname(c))}</b>${c.company?`<div class="muted sm">${esc(c.company)}</div>`:''}</div></div></td>
+      <td class="hide-sm"><div>${esc(c.email||'—')}</div><div class="muted sm mono">${esc(c.phone||'')}</div></td>
+      <td><div class="row wrap" style="gap:4px">${(c.tags||[]).slice(0,2).map(chip).join('')}${(c.tags||[]).length>2?`<span class="muted sm">+${c.tags.length-2}</span>`:''}</div></td>
+      <td class="hide-sm">${esc(c.source||'—')}</td><td class="muted num">${fdate(c.createdAt)}</td>
+      <td data-act="noop"><button type="button" class="iconbtn" data-act="menu" data-menu="crow" data-id="${c.id}" aria-label="Actions for ${esc(cname(c))}">${ic('more')}</button></td></tr>`).join('')}</tbody></table></div>
+    <div class="toolbar" style="border-top:1px solid var(--line);border-bottom:0"><span class="muted sm">Showing ${(f.page-1)*PAGE+1}–${Math.min(all.length,f.page*PAGE)} of ${all.length}</span><span class="sp"></span>
+      <button class="btn s" data-act="c-page" data-d="-1" ${f.page<=1?'disabled':''}>${ic('chevL',14)}Previous</button><span class="sm">Page ${f.page} of ${pages}</span><button class="btn s" data-act="c-page" data-d="1" ${f.page>=pages?'disabled':''}>Next${ic('chevR',14)}</button></div>`
+    :emptyState(DB.contacts.length?'No contacts match your filters':'No contacts yet',DB.contacts.length?'Try a different search or clear the filters.':'Add your first contact to get started.',DB.contacts.length?`<button class="btn" data-act="c-clear">Clear filters</button>`:`<button class="btn pri" data-act="c-add">Add contact</button>`)}
+  </div>`;
+}
+LIVE.cq=t=>{UI.contacts.q=t.value;UI.contacts.page=1;render();};
+CHG.ctag=t=>{UI.contacts.tag=t.value;UI.contacts.page=1;render();};
+CHG.csrc=t=>{UI.contacts.source=t.value;UI.contacts.page=1;render();};
+CHG['c-sel']=t=>{const s=UI.contacts.sel,i=s.indexOf(t.dataset.id);if(t.checked&&i<0)s.push(t.dataset.id);if(!t.checked&&i>=0)s.splice(i,1);render();};
+CHG['c-all']=t=>{const f=UI.contacts,rows=filteredContacts().slice((f.page-1)*PAGE,f.page*PAGE).map(c=>c.id);f.sel=t.checked?[...new Set(f.sel.concat(rows))]:f.sel.filter(id=>!rows.includes(id));render();};
+A['c-sort']=el=>{const f=UI.contacts,k=el.dataset.k;if(f.sort===k)f.dir*=-1;else{f.sort=k;f.dir=k==='createdAt'?-1:1;}render();};
+A['c-clear']=()=>{Object.assign(UI.contacts,{q:'',tag:'',source:'',page:1});render();};
+A['c-page']=el=>{UI.contacts.page+=+el.dataset.d;render();};
+A['c-open']=el=>go('contacts',{contactId:el.dataset.id});
+MENUS.crow=d=>`${mi('View profile','c-open',{icon:'eye',d:{id:d.id}})}${mi('Edit','c-edit',{icon:'edit',d:{id:d.id}})}${mi('Message','c-msg',{icon:'message',d:{id:d.id}})}<hr>${mi('Delete','c-del',{icon:'trash',danger:true,d:{id:d.id}})}`;
+A['c-add']=()=>openContactModal();
+A['c-edit']=el=>openContactModal(el.dataset.id);
+A['c-del']=el=>deleteContact(el.dataset.id);
+A['c-msg']=el=>openConversationFor(el.dataset.id);
+A['c-bulk-del']=()=>{const ids=UI.contacts.sel.slice();confirmModal('Delete '+ids.length+' contact'+(ids.length>1?'s':'')+'?','This also removes their deals, tasks, appointments and conversations. This cannot be undone.','Delete',()=>{ids.forEach(removeContact);UI.contacts.sel=[];commit();toast(ids.length+' contact(s) deleted');});};
+A['c-bulk-tag']=()=>{const ids=UI.contacts.sel.slice();openModal({title:'Add a tag to '+ids.length+' contacts',ok:'Add tag',d:{tag:''},body:()=>`${fld('Tag',`<input class="input" id="m-tag" data-d="tag" value="${esc(UI.modal.d.tag)}" list="taglist" data-autofocus autocomplete="off"><datalist id="taglist">${allTags().map(t=>`<option value="${esc(t)}">`).join('')}</datalist>`,err('tag'))}`,
+  onSubmit:()=>{const t=UI.modal.d.tag.trim();if(!t){UI.modal.err={tag:'Enter a tag name.'};return false;}ids.forEach(id=>{const c=cfind(id);if(c&&!c.tags.includes(t)){c.tags.push(t);fire('tag_added',{contactId:id,tag:t});}});UI.contacts.sel=[];commit();toast('Tag added');return true;}});};
+function removeContact(id){
+  DB.contacts=DB.contacts.filter(c=>c.id!==id);DB.opps=DB.opps.filter(o=>o.contactId!==id);DB.appts=DB.appts.filter(a=>a.contactId!==id);
+  DB.tasks=DB.tasks.filter(t=>t.contactId!==id);DB.convos=DB.convos.filter(c=>c.contactId!==id);if(UI.conv.id&&!DB.convos.some(c=>c.id===UI.conv.id))UI.conv.id=null;
+}
+function deleteContact(id){
+  const c=cfind(id);if(!c)return;
+  confirmModal('Delete '+esc(cname(c))+'?','This also removes their deals, tasks, appointments and conversations. This cannot be undone.','Delete contact',()=>{removeContact(id);log('contact','Contact deleted: '+cname(c));if(UI.route==='contact')go('contacts');else commit();toast('Contact deleted');});
+}
+function openContactModal(id){
+  const c=id?cfind(id):null;
+  const d=c?clone(c):{firstName:'',lastName:'',email:'',phone:'',company:'',source:'Website Form',ownerId:DB.meId,city:'',tags:[],custom:{cf1:'',cf2:'',cf3:''}};
+  d.tagInput='';
+  openModal({title:c?'Edit contact':'Add contact',ok:c?'Save changes':'Add contact',wide:true,d,
+    body:()=>{const d=UI.modal.d,cf=DB.customFields;return `<div class="fgrid">
+      ${fld('First name *',inp('firstName',d.firstName,{ph:'Jane',attrs:'data-autofocus'}),err('firstName'))}${fld('Last name',inp('lastName',d.lastName,{ph:'Doe'}))}
+      ${fld('Email',inp('email',d.email,{type:'email',ph:'jane@example.com'}),err('email'))}${fld('Phone',inp('phone',d.phone,{type:'tel',ph:'(555) 000-0000'}))}
+      ${fld('Company',inp('company',d.company))}${fld('City',inp('city',d.city))}
+      ${fld('Source',sel('source',d.source,SOURCES))}${fld('Owner',sel('ownerId',d.ownerId,ownerOpts()))}
+      <div class="full">${tagEditor(d)}</div>
+      <div class="full"><b>Custom fields</b></div>
+      ${fld(cf[0].name,sel('custom.cf1',d.custom.cf1,[['','Not set']].concat(cf[0].options)))}${fld(cf[1].name+' ($)',inp('custom.cf2',d.custom.cf2,{type:'number',ph:'0',attrs:'min="0"'}))}
+      ${fld(cf[2].name,inp('custom.cf3',d.custom.cf3,{type:'date'}))}</div>`;},
+    onSubmit:()=>{const d=UI.modal.d,e={};
+      if(!d.firstName.trim()&&!d.lastName.trim())e.firstName='Enter a first or last name.';
+      const em=d.email.trim().toLowerCase();
+      if(em&&!validEmail(em))e.email='Enter a valid email address.';
+      else if(em&&DB.contacts.some(x=>x.id!==id&&(x.email||'').toLowerCase()===em))e.email='Another contact already uses this email.';
+      if(Object.keys(e).length){UI.modal.err=e;return false;}
+      const v=d.tagInput.trim();if(v&&!d.tags.some(t=>t.toLowerCase()===v.toLowerCase()))d.tags.push(v);
+      const body={firstName:d.firstName.trim(),lastName:d.lastName.trim(),email:d.email.trim(),phone:d.phone.trim(),company:d.company.trim(),city:d.city.trim(),source:d.source,ownerId:d.ownerId,tags:d.tags,custom:d.custom};
+      if(c){const added=d.tags.filter(t=>!c.tags.includes(t));Object.assign(c,body);log('contact','Contact updated: '+cname(c),c.id);added.forEach(t=>fire('tag_added',{contactId:c.id,tag:t}));toast('Contact saved');}
+      else{const n=Object.assign({id:uid('c'),createdAt:Date.now(),notes:[]},body);DB.contacts.unshift(n);log('contact',cname(n)+' was added as a new contact',n.id);notify('New contact added: '+cname(n),'contacts');fire('contact_created',{contactId:n.id});toast('Contact added');}
+      commit();return true;}});
+}
+
+/* ============ contact profile ============ */
+function viewContact(){
+  const c=cfind(UI.contactId);
+  if(!c)return emptyState('Contact not found','It may have been deleted.',`<button class="btn" data-act="nav" data-r="contacts">Back to contacts</button>`);
+  const deals=DB.opps.filter(o=>o.contactId===c.id),ap=DB.appts.filter(a=>a.contactId===c.id).sort((a,b)=>b.start-a.start),tk=DB.tasks.filter(t=>t.contactId===c.id).sort((a,b)=>a.done-b.done||a.due.localeCompare(b.due));
+  const cv=DB.convos.find(x=>x.contactId===c.id),cf=DB.customFields,own=ufind(c.ownerId);
+  const cfv=[[cf[0].name,c.custom.cf1||'—'],[cf[1].name,c.custom.cf2?money(c.custom.cf2):'—'],[cf[2].name,c.custom.cf3?fdateY(mk(c.custom.cf3)):'—']];
+  return `<div class="detail">
+    <div class="col">
+      <section class="card card-b col" style="gap:14px"><div class="row" style="gap:14px">${av(cname(c),'l')}<div style="min-width:0"><h2 style="font-size:19px;overflow-wrap:anywhere">${esc(cname(c))}</h2><div class="muted">${esc(c.company||'No company')}</div></div></div>
+        <div class="row wrap"><button class="btn pri s" data-act="c-msg" data-id="${c.id}">${ic('message',14)}Message</button><button class="btn s" data-act="c-edit" data-id="${c.id}">${ic('edit',14)}Edit</button><button class="btn s bad" data-act="c-del" data-id="${c.id}">${ic('trash',14)}Delete</button></div>
+        <dl class="kv" style="margin:0"><dt>Email</dt><dd>${esc(c.email||'—')}</dd><dt>Phone</dt><dd class="mono">${esc(c.phone||'—')}</dd><dt>City</dt><dd>${esc(c.city||'—')}</dd><dt>Source</dt><dd>${esc(c.source||'—')}</dd><dt>Owner</dt><dd>${own?esc(own.name):'—'}</dd><dt>Added</dt><dd>${fdateY(c.createdAt)}</dd></dl></section>
+      <section class="card card-b col"><div class="row"><h3 class="sp" style="font-size:14px">Tags</h3><button class="btn s" data-act="ct-add" data-id="${c.id}">${ic('plus',14)}Add tag</button></div>
+        <div class="row wrap" style="gap:6px">${(c.tags||[]).length?c.tags.map((t,i)=>`<span class="chip">${esc(t)}<button type="button" data-act="ct-del" data-id="${c.id}" data-i="${i}" aria-label="Remove tag ${esc(t)}">${ic('x',12)}</button></span>`).join(''):'<span class="muted">No tags yet</span>'}</div></section>
+      <section class="card card-b col"><h3 style="font-size:14px">Custom fields</h3><dl class="kv" style="margin:0">${cfv.map(r=>`<dt>${esc(r[0])}</dt><dd>${esc(r[1])}</dd>`).join('')}</dl></section>
+    </div>
+    <div class="col">
+      <section class="card"><div class="card-h"><h3>Notes</h3></div><div class="card-b col"><form data-submit="note" class="col" style="gap:8px"><textarea class="textarea" id="note-in" placeholder="Add a note about this contact…" rows="2" aria-label="New note"></textarea><div><button class="btn pri s">Save note</button></div></form>
+        ${(c.notes||[]).length?`<div class="feed">${c.notes.slice().sort((a,b)=>b.at-a.at).map(n=>`<div class="feed-i"><div class="sp" style="min-width:0"><div style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(n.text)}</div><div class="muted sm">${fdateY(n.at)} · ${ftime(n.at)}</div></div><button type="button" class="iconbtn" data-act="note-del" data-id="${c.id}" data-n="${n.id}" aria-label="Delete note">${ic('trash',16)}</button></div>`).join('')}</div>`:''}</div></section>
+      <section class="card"><div class="card-h"><h3>Tasks</h3><span class="sp"></span><button class="btn s" data-act="task-add" data-cid="${c.id}">${ic('plus',14)}Add task</button></div><div class="card-b">${tk.length?`<div class="feed">${tk.map(t=>taskRow(t,false)).join('')}</div>`:'<span class="muted">No tasks for this contact.</span>'}</div></section>
+      <section class="card"><div class="card-h"><h3>Opportunities</h3><span class="sp"></span><button class="btn s" data-act="o-add" data-cid="${c.id}">${ic('plus',14)}Add</button></div><div class="card-b">${deals.length?`<div class="feed">${deals.map(o=>`<div class="feed-i" style="align-items:center"><button type="button" class="btn ghost sp" data-act="o-edit" data-id="${o.id}" style="justify-content:flex-start;padding:0;font-weight:700;text-align:left;white-space:normal">${esc(o.name)}</button><span class="num">${money(o.value)}</span>${pill(stageName(o.pipelineId,o.stageId),oppStatus(o)==='won'?'good':oppStatus(o)==='lost'?'bad':'info')}</div>`).join('')}</div>`:'<span class="muted">No deals yet.</span>'}</div></section>
+      <section class="card"><div class="card-h"><h3>Appointments</h3><span class="sp"></span><button class="btn s" data-act="appt-add" data-cid="${c.id}">${ic('plus',14)}Book</button></div><div class="card-b">${ap.length?`<div class="feed">${ap.map(a=>`<div class="feed-i" style="align-items:center"><button type="button" class="btn ghost sp" data-act="appt-edit" data-id="${a.id}" style="justify-content:flex-start;padding:0;font-weight:700;text-align:left;white-space:normal">${esc(a.title)}</button><span class="muted sm">${fdate(a.start)}, ${ftime(a.start)}</span>${pill(a.status,a.status==='confirmed'?'info':a.status==='showed'?'good':a.status==='cancelled'||a.status==='no-show'?'bad':'')}</div>`).join('')}</div>`:'<span class="muted">No appointments.</span>'}</div></section>
+      <section class="card"><div class="card-h"><h3>Conversation</h3></div><div class="card-b">${cv?`<div class="muted" style="margin-bottom:8px">${cv.messages.length} messages · last ${rel(cv.lastAt)}</div>`:'<div class="muted" style="margin-bottom:8px">No messages yet.</div>'}<button class="btn s" data-act="c-msg" data-id="${c.id}">${ic('message',14)}Open conversation</button></div></section>
+    </div></div>`;
+}
+SUB.note=f=>{const t=$('#note-in').value.trim();if(!t){toast('Write a note first','bad');return;}const c=cfind(UI.contactId);c.notes.push({id:uid('n'),text:t,at:Date.now()});log('contact','Note added to '+cname(c),c.id);commit();toast('Note saved');};
+A['note-del']=el=>{const c=cfind(el.dataset.id);c.notes=c.notes.filter(n=>n.id!==el.dataset.n);commit();toast('Note deleted');};
+A['ct-del']=el=>{const c=cfind(el.dataset.id);c.tags.splice(+el.dataset.i,1);commit();toast('Tag removed');};
+A['ct-add']=el=>{const c=cfind(el.dataset.id);openModal({title:'Add tag',ok:'Add tag',d:{tag:''},body:()=>`${fld('Tag',`<input class="input" id="m-tag" data-d="tag" value="${esc(UI.modal.d.tag)}" list="taglist" data-autofocus autocomplete="off" placeholder="e.g. hot-lead"><datalist id="taglist">${allTags().map(t=>`<option value="${esc(t)}">`).join('')}</datalist>`,err('tag'))}`,
+  onSubmit:()=>{const t=UI.modal.d.tag.trim();if(!t){UI.modal.err={tag:'Enter a tag name.'};return false;}if(c.tags.some(x=>x.toLowerCase()===t.toLowerCase())){UI.modal.err={tag:'This contact already has that tag.'};return false;}c.tags.push(t);fire('tag_added',{contactId:c.id,tag:t});commit();toast('Tag added');return true;}});};
+
+/* ============ opportunities ============ */
+function oppFiltered(){
+  const f=UI.opps,q=f.q.trim().toLowerCase();
+  return DB.opps.filter(o=>{const c=cfind(o.contactId);return (!q||(o.name+' '+cname(c)).toLowerCase().includes(q))&&(f.owner==='all'||o.ownerId===f.owner);});
+}
+function oppCard(o){
+  const c=cfind(o.contactId),own=ufind(o.ownerId),days=Math.max(0,Math.floor((Date.now()-o.stageSince)/DAY));
+  return `<div class="deal" draggable="true" data-drag="opp" data-id="${o.id}">
+    <div class="row" style="align-items:flex-start"><div class="nm sp">${esc(o.name)}</div><button type="button" class="iconbtn" style="width:26px;height:26px" data-act="menu" data-menu="orow" data-id="${o.id}" aria-label="Actions for ${esc(o.name)}">${ic('more',16)}</button></div>
+    <div class="row sm muted">${ic('user',13)}<span class="trunc">${esc(cname(c))}</span></div>
+    <div class="row"><b class="num" style="font-size:15px">${money(o.value)}</b><span class="sp"></span>${own?av(own.name,'s',own.color):''}</div>
+    <div class="row sm muted">${ic('calendar',13)}Close ${fdate(mk(o.closeDate))}<span class="sp"></span>${days}d in stage</div></div>`;
+}
+function viewOpps(){
+  const f=UI.opps,p=DB.pipelines[0],all=oppFiltered();
+  const open=all.filter(o=>oppStatus(o)==='open'),won=all.filter(o=>oppStatus(o)==='won');
+  const head=`${pageHead('Opportunities',open.length+' open · '+money(sum(open,'value'))+' in pipeline · '+money(sum(won,'value'))+' won',
+    `<div class="seg" role="group" aria-label="View"><button class="${f.view==='board'?'on':''}" data-act="o-view" data-v="board">${ic('kanban',14)} Board</button><button class="${f.view==='list'?'on':''}" data-act="o-view" data-v="list">${ic('list',14)} List</button></div><button class="btn pri" data-act="o-add">${ic('plus',16)}Add opportunity</button>`)}
+    <div class="row wrap" style="margin-bottom:12px"><input class="input" id="oq" data-live="oq" value="${esc(f.q)}" placeholder="Search deals or contacts…" style="max-width:280px" aria-label="Search opportunities"><select class="select" id="oown" data-chg="oown" style="width:auto" aria-label="Filter by owner"><option value="all">All owners</option>${DB.team.map(u=>`<option value="${u.id}" ${f.owner===u.id?'selected':''}>${esc(u.name)}</option>`).join('')}</select></div>`;
+  if(f.view==='list'){
+    return head+`<div class="card">${all.length?`<div class="tbl-wrap"><table><thead><tr><th>Deal</th><th>Contact</th><th>Value</th><th>Stage</th><th class="hide-sm">Owner</th><th class="hide-sm">Close date</th><th style="width:44px"></th></tr></thead><tbody>
+      ${all.slice().sort((a,b)=>b.createdAt-a.createdAt).map(o=>{const c=cfind(o.contactId),own=ufind(o.ownerId);return `<tr><td><button type="button" class="btn ghost" data-act="o-edit" data-id="${o.id}" style="padding:0;font-weight:700;white-space:normal;text-align:left">${esc(o.name)}</button></td><td>${esc(cname(c))}</td><td class="num">${money(o.value)}</td>
+        <td><select class="select" data-chg="o-stage" data-id="${o.id}" aria-label="Stage for ${esc(o.name)}" style="width:150px">${p.stages.map(s=>`<option value="${s.id}" ${s.id===o.stageId?'selected':''}>${esc(s.name)}</option>`).join('')}</select></td>
+        <td class="hide-sm">${own?esc(own.name):'—'}</td><td class="hide-sm num">${fdate(mk(o.closeDate))}</td><td><button type="button" class="iconbtn" data-act="menu" data-menu="orow" data-id="${o.id}" aria-label="Actions">${ic('more')}</button></td></tr>`;}).join('')}</tbody></table></div>`:emptyState('No opportunities match','Adjust the search or owner filter.')}</div>`;
+  }
+  return head+`<div class="board" data-keepscroll="board">${p.stages.map(s=>{const l=all.filter(o=>o.stageId===s.id).sort((a,b)=>a.ord-b.ord);
+    return `<section class="bcol" data-drop="opp" data-stage="${s.id}" aria-label="${esc(s.name)}"><div class="bcol-h"><div class="t"><span class="dotc" style="background:${s.name==='Won'?'var(--good)':s.name==='Lost'?'var(--bad)':'var(--accent)'}"></span><span class="sp">${esc(s.name)}</span><span class="pill">${l.length}</span><button type="button" class="iconbtn" style="width:26px;height:26px" data-act="o-add" data-stage="${s.id}" aria-label="Add deal to ${esc(s.name)}">${ic('plus',16)}</button></div><div class="muted sm num">${money(sum(l,'value'))}</div></div>
+      <div class="bcol-b">${l.length?l.map(oppCard).join(''):`<div class="muted sm" style="padding:14px 6px;text-align:center">Drop a deal here</div>`}</div></section>`;}).join('')}</div>
+    <p class="muted sm">Tip: drag a card to another stage, or use the card menu to move it.</p>`;
+}
+LIVE.oq=t=>{UI.opps.q=t.value;render();};
+CHG.oown=t=>{UI.opps.owner=t.value;render();};
+CHG['o-stage']=t=>moveOpp(t.dataset.id,t.value);
+A['o-view']=el=>{UI.opps.view=el.dataset.v;render();};
+MENUS.orow=d=>{const o=DB.opps.find(x=>x.id===d.id);return `${mi('Edit','o-edit',{icon:'edit',d:{id:d.id}})}${mi('View contact','c-open',{icon:'user',d:{id:o.contactId}})}<h5>Move to stage</h5>${DB.pipelines[0].stages.filter(s=>s.id!==o.stageId).map(s=>mi(esc(s.name),'o-move',{d:{id:d.id,s:s.id}})).join('')}<hr>${mi('Delete','o-del',{icon:'trash',danger:true,d:{id:d.id}})}`;};
+A['o-move']=el=>moveOpp(el.dataset.id,el.dataset.s);
+A['o-edit']=el=>openOppModal(el.dataset.id);
+A['o-add']=el=>openOppModal(null,{stage:el.dataset.stage,cid:el.dataset.cid});
+A['o-del']=el=>{const o=DB.opps.find(x=>x.id===el.dataset.id);confirmModal('Delete this opportunity?','"'+esc(o.name)+'" ('+money(o.value)+') will be removed from the pipeline.','Delete',()=>{DB.opps=DB.opps.filter(x=>x!==o);log('opp','Opportunity deleted: '+o.name,o.contactId);commit();toast('Opportunity deleted');});};
+DROP.opp=(id,zone)=>moveOpp(id,zone.dataset.stage);
+function moveOpp(id,sid){
+  const o=DB.opps.find(x=>x.id===id);if(!o||o.stageId===sid){render();return;}
+  const was=oppStatus(o);o.stageId=sid;o.stageSince=Date.now();o.ord=Math.max(-1,...DB.opps.filter(x=>x.stageId===sid).map(x=>x.ord||0))+1;
+  const n=stageName(o.pipelineId,sid);log('opp',o.name+' moved to '+n+(oppStatus(o)==='won'?' ('+money(o.value)+')':''),o.contactId);
+  if(oppStatus(o)==='won')notify('Deal won: '+o.name+' ('+money(o.value)+')','opportunities');
+  fire('opp_stage',{contactId:o.contactId,stage:n});commit();toast(o.name+' moved to '+n);
+}
+function openOppModal(id,pre){
+  const o=id?DB.opps.find(x=>x.id===id):null;pre=pre||{};
+  const d=o?clone(o):{name:'',contactId:pre.cid||'',value:'',stageId:pre.stage||'s1',ownerId:DB.meId,closeDate:ymd(Date.now()+30*DAY)};
+  openModal({title:o?'Edit opportunity':'Add opportunity',ok:o?'Save changes':'Add opportunity',d,
+    body:()=>{const d=UI.modal.d;return `<div class="fgrid">
+      ${fld('Deal title *',inp('name',d.name,{ph:'e.g. Smith Kitchen Remodel',attrs:'data-autofocus'}),err('name'),'full')}
+      ${fld('Contact *',sel('contactId',d.contactId,[['','Select a contact']].concat(contactOpts())),err('contactId'))}${fld('Value ($) *',inp('value',d.value,{type:'number',ph:'0',attrs:'min="0"'}),err('value'))}
+      ${fld('Stage',sel('stageId',d.stageId,DB.pipelines[0].stages.map(s=>[s.id,s.name])))}${fld('Owner',sel('ownerId',d.ownerId,ownerOpts()))}
+      ${fld('Expected close date',inp('closeDate',d.closeDate,{type:'date'}))}</div>`;},
+    onSubmit:()=>{const d=UI.modal.d,e={};
+      if(!String(d.name).trim())e.name='Enter a deal title.';
+      if(!d.contactId)e.contactId='Choose a contact.';
+      if(d.value===''||isNaN(+d.value)||+d.value<0)e.value='Enter a value of 0 or more.';
+      if(Object.keys(e).length){UI.modal.err=e;return false;}
+      if(o){const moved=o.stageId!==d.stageId;Object.assign(o,{name:d.name.trim(),contactId:d.contactId,value:+d.value,ownerId:d.ownerId,closeDate:d.closeDate});
+        if(moved){commit();moveOppSilent(o,d.stageId);}else{commit();}toast('Opportunity saved');}
+      else{const n={id:uid('o'),name:d.name.trim(),contactId:d.contactId,value:+d.value,pipelineId:'p1',stageId:d.stageId,ownerId:d.ownerId,closeDate:d.closeDate,createdAt:Date.now(),stageSince:Date.now(),ord:999};
+        DB.opps.push(n);log('opp','New opportunity: '+n.name+' ('+money(n.value)+')',n.contactId);commit();toast('Opportunity added');}
+      return true;}});
+}
+function moveOppSilent(o,sid){o.stageId=o.stageId;moveOpp(o.id,sid);}
+/* ============ home landing page, sign-in, page loading ============ */
+const DEMO={user:'EdmondPVA',pass:'CRMsimulator'};
+const AUTH_KEY='crm-sim-auth';
+UI.login={user:'',pass:'',err:'',show:false};UI.loading=null;
+try{UI.authed=sessionStorage.getItem(AUTH_KEY)==='1';}catch(e){UI.authed=false;}
+let loadTok=0;
+function startLoading(label){
+  const tok=++loadTok;UI.loading=label;render();
+  setTimeout(()=>{if(tok!==loadTok)return;UI.loading=null;render();},650);
+}
+const loaderHtml=()=>`<div class="loader" role="status" aria-live="polite"><div class="spin" aria-hidden="true"></div><b>Loading ${esc(UI.loading)}…</b><span class="muted sm">Preparing simulated data</span></div>`;
+function homeView(){
+  const L=UI.login;
+  const mods=[['home','Dashboard','Totals, pipeline and recent activity'],['users','Contacts','Search, tag and keep notes'],['kanban','Opportunities','Drag deals across pipeline stages'],['message','Conversations','A simulated inbox for practice replies'],['calendar','Calendars','Book, edit and cancel appointments'],['zap','Automation','Build workflows and test-run them']];
+  return `<div class="home"><section class="home-hero"><div class="home-brand"><span class="home-logo">${ic('grid',20)}</span>CRM Practice Simulator</div>
+    <h1>Practice CRM skills in a safe, simulated workspace</h1>
+    <p>Work with fictional contacts, deals, messages, appointments and automations. Everything runs in your browser. No texts, emails or calls are ever sent.</p>
+    <ul class="home-mods">${mods.map(m=>`<li><span>${ic(m[0],20)}</span><span><b>${m[1]}</b><small>${m[2]}</small></span></li>`).join('')}</ul></section>
+    <section class="home-auth"><form class="auth-card" data-submit="login" novalidate aria-label="Sign in">
+      <div><h2>Sign in</h2><p class="muted">Use the demo account below to enter the simulator.</p></div>
+      ${fld('Email',`<input class="input" id="lg-user" data-live="lgu" value="${esc(L.user)}" autocomplete="username" placeholder="Enter your email">`)}
+      ${fld('Password',`<div class="pw-row"><input class="input" id="lg-pass" data-live="lgp" type="${L.show?'text':'password'}" value="${esc(L.pass)}" autocomplete="current-password" placeholder="Enter your password"><button type="button" class="btn" data-act="lg-show" aria-label="${L.show?'Hide':'Show'} password">${ic('eye',16)}</button></div>`)}
+      ${L.err?`<div class="note" role="alert" style="background:var(--bad-soft);color:var(--bad)">${ic('info',16)}<span>${esc(L.err)}</span></div>`:''}
+      <button class="btn pri" type="submit" style="padding:11px 14px">Sign in</button>
+      <div class="demo"><b>Demo account</b>
+        <dl class="kv" style="margin:0"><dt>Email</dt><dd><span class="mono">${DEMO.user}</span><button type="button" class="iconbtn" data-act="lg-copy" data-v="${DEMO.user}" data-l="Email" aria-label="Copy email">${ic('copy',16)}</button></dd>
+        <dt>Password</dt><dd><span class="mono">${DEMO.pass}</span><button type="button" class="iconbtn" data-act="lg-copy" data-v="${DEMO.pass}" data-l="Password" aria-label="Copy password">${ic('copy',16)}</button></dd></dl>
+        <div><button type="button" class="btn s" data-act="lg-fill">Fill in the sign-in form</button></div></div>
+      <div class="note">${ic('shield',16)}<span>Simulated sign-in. It runs only in this page and connects to no real account. These details are visible to anyone who opens this page, so never reuse a real password here.</span></div>
+    </form></section></div>`;
+}
+LIVE.lgu=t=>{UI.login.user=t.value;};
+LIVE.lgp=t=>{UI.login.pass=t.value;};
+A['lg-show']=()=>{UI.login.show=!UI.login.show;render();const e=document.getElementById('lg-pass');if(e)e.focus();};
+A['lg-fill']=()=>{UI.login.user=DEMO.user;UI.login.pass=DEMO.pass;UI.login.err='';render();};
+A['lg-copy']=el=>copyText(el.dataset.v,el.dataset.l);
+SUB.login=()=>{
+  const L=UI.login,u=L.user.trim(),p=L.pass;
+  if(!u||!p){L.err='Enter both your email and your password.';render();return;}
+  if(u.toLowerCase()!==DEMO.user.toLowerCase()||p!==DEMO.pass){L.err='That email or password does not match. Use the demo account shown on this page.';render();return;}
+  L.err='';L.pass='';UI.authed=true;try{sessionStorage.setItem(AUTH_KEY,'1');}catch(e){}
+  UI.route='dashboard';UI.contactId=null;startLoading('Dashboard');toast('Signed in as '+DEMO.user+' (simulated)');
+};
+A['signout']=()=>{UI.authed=false;UI.loading=null;loadTok++;UI.menu=null;UI.login={user:'',pass:'',err:'',show:false};try{sessionStorage.removeItem(AUTH_KEY);}catch(e){}render();window.scrollTo(0,0);};
+/* ============ conversations ============ */
+const CANNED=['Sounds good, thank you!','Can you call me tomorrow afternoon instead?','Do you have availability next week?','Thanks. I will review this and get back to you.','Could you send a few photos of similar projects?'];
+const TEMPLATES=[
+  ['Appointment confirmation','Hi {{first}}, this is a confirmation of your appointment with {{biz}}. Reply here if you need to reschedule.'],
+  ['Proposal follow-up','Hi {{first}}, just checking in on the proposal we sent. Happy to walk through any line item with you.'],
+  ['Thank you','Hi {{first}}, thank you for choosing {{biz}}. We appreciate your business!']
+];
+const curConv=()=>DB.convos.find(c=>c.id===UI.conv.id);
+function openConversationFor(cid){
+  let cv=DB.convos.find(x=>x.contactId===cid);
+  if(!cv){cv={id:uid('cv'),contactId:cid,status:'open',unread:false,messages:[],lastAt:Date.now()};DB.convos.push(cv);}
+  cv.unread=false;UI.conv.id=cv.id;UI.conv.scrollBottom=true;UI.conv.draft='';UI.conv.subject='';save();go('conversations');
+}
+function msgHtml(m){
+  if(m.dir==='note')return `<div class="msg note"><b>Internal note</b> (only your team would see this)<br>${esc(m.text).replace(/\n/g,'<br>')}<small>${fdate(m.at)}, ${ftime(m.at)}</small></div>`;
+  let body=esc(m.text).replace(/\n/g,'<br>');
+  if(m.ch==='email'&&/^Subject: /.test(m.text)){const i=m.text.indexOf('\n');const sub=i<0?m.text:m.text.slice(0,i);const rest=i<0?'':m.text.slice(i+1).trim();body=`<b>${esc(sub)}</b>${rest?'<br><br>'+esc(rest).replace(/\n/g,'<br>'):''}`;}
+  const lab=m.dir==='out'?(m.auto?'Automated · ':'')+'Simulated '+(m.ch==='email'?'email':'SMS'):(m.ch==='email'?'Email':'SMS')+' · sample message';
+  return `<div class="msg ${m.dir}">${body}<small>${lab} · ${fdate(m.at)}, ${ftime(m.at)}</small></div>`;
+}
+function viewConv(){
+  const f=UI.conv,q=f.q.trim().toLowerCase();
+  let list=DB.convos.slice().sort((a,b)=>b.lastAt-a.lastAt).filter(cv=>{
+    const c=cfind(cv.contactId);
+    if(f.filter==='unread'&&!cv.unread)return false;if(f.filter==='open'&&cv.status!=='open')return false;if(f.filter==='closed'&&cv.status!=='closed')return false;
+    if(q&&!(cname(c)+' '+cv.messages.map(m=>m.text).join(' ')).toLowerCase().includes(q))return false;return true;});
+  const cv=curConv(),c=cv&&cfind(cv.contactId);
+  const cnt=k=>DB.convos.filter(x=>k==='all'||(k==='unread'?x.unread:x.status===k)).length;
+  const listHtml=`<div class="in-list"><div style="padding:12px 14px;border-bottom:1px solid var(--line)" class="col" ><div class="row"><h2 class="sp" style="font-size:17px">Conversations</h2><button class="btn s pri" data-act="conv-new">${ic('plus',14)}New</button></div>
+    <input class="input" id="vq" data-live="vq" value="${esc(f.q)}" placeholder="Search messages…" aria-label="Search conversations">
+    <div class="seg" role="group" aria-label="Filter" style="align-self:flex-start">${[['all','All'],['unread','Unread'],['open','Open'],['closed','Closed']].map(([k,l])=>`<button class="${f.filter===k?'on':''}" data-act="conv-filter" data-k="${k}">${l} ${cnt(k)}</button>`).join('')}</div></div>
+    <div class="items">${list.length?list.map(x=>{const cc=cfind(x.contactId),last=x.messages[x.messages.length-1];return `<button type="button" class="cv ${x.id===f.id?'on':''} ${x.unread?'unread':''}" data-act="conv-open" data-id="${x.id}">${av(cname(cc))}<span style="min-width:0;flex:1"><span class="row"><span class="cv-n trunc sp">${esc(cname(cc))}</span><span class="muted sm">${rel(x.lastAt)}</span></span><span class="muted sm trunc" style="display:block">${last?(last.dir==='out'?'You: ':'')+esc(last.text.replace(/^Subject: /,'').replace(/\n+/g,' ')):'No messages yet'}</span>${x.status==='closed'?`<span class="pill" style="margin-top:4px">Closed</span>`:''}</span>${x.unread?'<span class="ud" aria-label="Unread"></span>':''}</button>`;}).join(''):emptyState('No conversations','Nothing matches this filter.')}</div></div>`;
+  let thread;
+  if(!cv)thread=`<div class="in-thread"><div class="empty" style="margin:auto">${ic('message',34)}<b>Select a conversation</b><span>Choose a contact on the left to read and reply.</span></div></div>`;
+  else thread=`<div class="in-thread"><div class="in-head"><button class="iconbtn back-btn bd" data-act="conv-back" aria-label="Back to list">${ic('chevL')}</button>${av(cname(c))}<div style="min-width:0" class="sp"><b>${esc(cname(c))}</b><div class="muted sm trunc">${esc(c.phone||'')} · ${esc(c.email||'')}</div></div>
+      ${pill(cv.status==='open'?'Open':'Closed',cv.status==='open'?'good':'')}${cv.unread?pill('Unread','info'):''}
+      <button class="btn s" data-act="conv-sim" title="Add a fake reply from the contact">${ic('refresh',14)}<span class="hide-sm">Simulate reply</span></button>
+      <button class="iconbtn bd" data-act="menu" data-menu="convmenu" aria-label="Conversation actions">${ic('more')}</button></div>
+    <div class="note info" style="margin:10px 16px 0;border-radius:10px">${ic('shield',16)}<span>Simulated inbox. Messages you send here are stored in this page only. Nothing is sent by SMS or email.</span></div>
+    <div class="thread" id="thread" data-keepscroll="thread">${cv.messages.length?cv.messages.map(msgHtml).join(''):'<div class="empty">No messages yet. Write the first one below.</div>'}</div>
+    <div class="composer"><div class="row wrap"><div class="seg" role="group" aria-label="Channel">${[['sms','SMS'],['email','Email'],['note','Internal note'],['reply','Customer reply']].map(([k,l])=>`<button class="${f.ch===k?'on':''}" data-act="conv-ch" data-k="${k}">${l}</button>`).join('')}</div>
+      <select class="select" data-chg="tmpl" style="width:auto" aria-label="Insert a template"><option value="">Insert template…</option>${TEMPLATES.map((t,i)=>`<option value="${i}">${t[0]}</option>`).join('')}</select></div>
+      ${f.ch==='email'?`<input class="input" id="subj" data-live="subj" value="${esc(f.subject)}" placeholder="Subject" aria-label="Email subject">`:''}
+      <textarea class="textarea" id="composer" data-live="draft" rows="3" placeholder="${f.ch==='note'?'Write an internal note…':f.ch==='reply'?'Type what the customer would say, e.g. Please call me tomorrow':'Type a message…  (Ctrl+Enter to send)'}" aria-label="Message">${esc(f.draft)}</textarea>
+      <div class="row"><span class="muted sm">${f.ch==='note'?'Only visible in this simulator':f.ch==='reply'?'Simulated: adds a message from the contact and runs matching workflows':'Simulated: will not be delivered'}</span><span class="sp"></span><button class="btn pri" data-act="conv-send">${ic('send',16)}${f.ch==='note'?'Add note':f.ch==='reply'?'Add customer reply':'Send (simulated)'}</button></div></div></div>`;
+  return `<div class="inbox ${f.id?'has-thread':''}">${listHtml}${thread}</div>`;
+}
+LIVE.vq=t=>{UI.conv.q=t.value;render();};
+LIVE.draft=t=>{UI.conv.draft=t.value;};
+LIVE.subj=t=>{UI.conv.subject=t.value;};
+CHG.tmpl=t=>{if(t.value==='')return;const cv=curConv(),c=cv&&cfind(cv.contactId);UI.conv.draft=TEMPLATES[+t.value][1].replace('{{first}}',c?c.firstName:'there').replace('{{biz}}',DB.biz.name);render();};
+A['conv-filter']=el=>{UI.conv.filter=el.dataset.k;render();};
+A['conv-ch']=el=>{UI.conv.ch=el.dataset.k;render();};
+A['conv-open']=el=>{const cv=DB.convos.find(x=>x.id===el.dataset.id);cv.unread=false;UI.conv.id=cv.id;UI.conv.scrollBottom=true;UI.conv.draft='';UI.conv.subject='';save();render();};
+A['conv-back']=()=>{UI.conv.id=null;render();};
+A['conv-new']=()=>openModal({title:'New message',ok:'Open conversation',d:{cid:''},body:()=>`${fld('Contact',sel('cid',UI.modal.d.cid,[['','Select a contact']].concat(contactOpts())),err('cid'))}<p class="muted sm">Opens the existing conversation, or starts a new simulated one.</p>`,
+  onSubmit:()=>{const id=UI.modal.d.cid;if(!id){UI.modal.err={cid:'Choose a contact.'};return false;}closeModal();openConversationFor(id);return true;}});
+MENUS.convmenu=()=>{const cv=curConv();return `${mi(cv.unread?'Mark as read':'Mark as unread','conv-unread',{icon:'eye'})}${mi(cv.status==='open'?'Close conversation':'Reopen conversation','conv-status',{icon:'check'})}${mi('View contact','c-open',{icon:'user',d:{id:cv.contactId}})}<hr>${mi('Delete conversation','conv-del',{icon:'trash',danger:true})}`;};
+A['conv-unread']=()=>{const cv=curConv();cv.unread=!cv.unread;commit();toast(cv.unread?'Marked as unread':'Marked as read');};
+A['conv-status']=()=>{const cv=curConv();cv.status=cv.status==='open'?'closed':'open';commit();toast(cv.status==='closed'?'Conversation closed':'Conversation reopened');};
+A['conv-del']=()=>{const cv=curConv(),c=cfind(cv.contactId);confirmModal('Delete this conversation?','The message history with '+esc(cname(c))+' will be removed. The contact is not affected.','Delete',()=>{DB.convos=DB.convos.filter(x=>x!==cv);UI.conv.id=null;commit();toast('Conversation deleted');});};
+A['conv-sim']=()=>{const cv=curConv();cv.messages.push({id:uid('m'),dir:'in',ch:cv.messages.length&&cv.messages[cv.messages.length-1].ch==='email'?'email':'sms',text:CANNED[Math.floor(Math.random()*CANNED.length)],at:Date.now()});cv.lastAt=Date.now();cv.status='open';UI.conv.scrollBottom=true;fire('customer_replied',{contactId:cv.contactId,text:cv.messages[cv.messages.length-1].text});commit();toast('Sample reply added');};
+A['conv-send']=()=>{
+  const cv=curConv();if(!cv)return;const f=UI.conv,text=(f.draft||'').trim();
+  if(!text){toast('Write a message first','bad');return;}
+  if(f.ch==='reply'){const c0=cfind(cv.contactId);cv.messages.push({id:uid('m'),dir:'in',ch:'sms',text,at:Date.now()});cv.lastAt=Date.now();cv.status='open';log('msg',cname(c0)+' replied by SMS (simulated)',c0.id);f.draft='';f.scrollBottom=true;fire('customer_replied',{contactId:c0.id,text});commit();toast('Customer reply added (simulated)');return;}
+  const c=cfind(cv.contactId);let body=text;
+  if(f.ch==='email'){const s=(f.subject||'').trim();if(!s){toast('Add an email subject first','bad');return;}body='Subject: '+s+'\n\n'+text;}
+  cv.messages.push({id:uid('m'),dir:f.ch==='note'?'note':'out',ch:f.ch,text:body,at:Date.now()});
+  cv.lastAt=Date.now();cv.unread=false;if(f.ch!=='note')cv.status='open';
+  log('msg',(f.ch==='note'?'Internal note added for ':'Simulated '+(f.ch==='email'?'email':'SMS')+' sent to ')+cname(c),c.id);
+  f.draft='';f.subject='';f.scrollBottom=true;commit();toast(f.ch==='note'?'Note added':'Message sent (simulated)');
+};
+
+/* ============ calendars ============ */
+const APPT_STATUS=['confirmed','showed','no-show','cancelled'];
+const apptKind=s=>s==='confirmed'?'info':s==='showed'?'good':s==='cancelled'||s==='no-show'?'bad':'';
+function visAppts(){return DB.appts.filter(a=>!UI.cal.hidden.includes(a.calendarId));}
+function viewCal(){
+  const f=UI.cal,d=new Date(f.date),title=d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const first=new Date(d.getFullYear(),d.getMonth(),1);const start=addDays(first.getTime(),-first.getDay());
+  const cells=Array.from({length:42},(_,i)=>addDays(start,i));
+  const ev=visAppts();
+  const head=`${pageHead('Calendars','Simulated appointments. Nothing syncs with an outside calendar.',`<button class="btn pri" data-act="appt-add">${ic('plus',16)}New appointment</button>`)}
+  <div class="row wrap" style="margin-bottom:12px"><button class="btn s" data-act="cal-today">Today</button><button class="iconbtn bd" data-act="cal-nav" data-n="-1" aria-label="Previous month">${ic('chevL')}</button><button class="iconbtn bd" data-act="cal-nav" data-n="1" aria-label="Next month">${ic('chevR')}</button><h2 style="font-size:18px;min-width:150px">${title}</h2><span class="sp"></span>
+    ${DB.calendars.map(cal=>`<label class="chk sm" style="font-weight:600"><input type="checkbox" data-chg="cal-vis" data-id="${cal.id}" ${f.hidden.includes(cal.id)?'':'checked'} style="accent-color:${cal.color}"><span class="dotc" style="background:${cal.color}"></span>${esc(cal.name)}</label>`).join('')}
+    <div class="seg" role="group" aria-label="View"><button class="${f.view==='month'?'on':''}" data-act="cal-view" data-v="month">Month</button><button class="${f.view==='agenda'?'on':''}" data-act="cal-view" data-v="agenda">Agenda</button></div></div>`;
+  if(f.view==='agenda'){
+    const m=ev.filter(a=>{const x=new Date(a.start);return x.getMonth()===d.getMonth()&&x.getFullYear()===d.getFullYear();}).sort((a,b)=>a.start-b.start);
+    const days=[...new Set(m.map(a=>ymd(a.start)))];
+    return head+`<div class="card">${days.length?days.map(k=>`<div class="agenda-day"><div><b>${fday(mk(k))}</b>${k===ymd(Date.now())?'<div><span class="pill info">Today</span></div>':''}</div><div class="col" style="gap:8px">${m.filter(a=>ymd(a.start)===k).map(a=>{const cal=calfind(a.calendarId),c=cfind(a.contactId);return `<button type="button" class="ag-ev" style="--ec:${cal?cal.color:'var(--accent)'}" data-act="appt-edit" data-id="${a.id}"><span class="mono sm" style="min-width:128px">${ftime(a.start)} – ${ftime(a.end)}</span><span class="sp" style="min-width:0"><b>${esc(a.title)}</b><span class="muted sm" style="display:block">${esc(cal?cal.name:'')}${c?' · '+esc(cname(c)):''}</span></span>${pill(a.status,apptKind(a.status))}</button>`;}).join('')}</div></div>`).join(''):emptyState('No appointments this month','Create one to see it here.',`<button class="btn pri" data-act="appt-add">New appointment</button>`)}</div>`;
+  }
+  return head+`<div class="card"><div class="tbl-wrap"><div style="min-width:640px"><div class="mgrid">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=>`<div class="dh">${x}</div>`).join('')}
+    ${cells.map(ts=>{const k=ymd(ts),dt=new Date(ts),off=dt.getMonth()!==d.getMonth(),es=ev.filter(a=>ymd(a.start)===k).sort((a,b)=>a.start-b.start);
+      return `<div class="mday ${off?'off':''} ${k===ymd(Date.now())?'today':''}" data-act="appt-add" data-date="${k}" role="button" aria-label="Add appointment on ${fday(ts)}"><span class="dn">${dt.getDate()}</span>
+      ${es.slice(0,3).map(a=>{const cal=calfind(a.calendarId);return `<button type="button" class="evt ${a.status==='cancelled'?'x':''}" style="--ec:${cal?cal.color:'var(--accent)'}" data-act="appt-edit" data-id="${a.id}" title="${esc(a.title)}"><span>${ftime(a.start).replace(' ','').toLowerCase()} ${esc(a.title)}</span></button>`;}).join('')}
+      ${es.length>3?`<button type="button" class="btn s ghost" style="padding:0 6px;justify-content:flex-start" data-act="cal-more" data-ts="${ts}">+${es.length-3} more</button>`:''}</div>`;}).join('')}</div></div></div></div>`;
+}
+CHG['cal-vis']=t=>{const h=UI.cal.hidden,i=h.indexOf(t.dataset.id);if(t.checked&&i>=0)h.splice(i,1);if(!t.checked&&i<0)h.push(t.dataset.id);render();};
+A['cal-today']=()=>{UI.cal.date=Date.now();render();};
+A['cal-nav']=el=>{const d=new Date(UI.cal.date);d.setDate(1);d.setMonth(d.getMonth()+(+el.dataset.n));UI.cal.date=d.getTime();render();};
+A['cal-view']=el=>{UI.cal.view=el.dataset.v;render();};
+A['cal-more']=el=>{UI.cal.date=+el.dataset.ts;UI.cal.view='agenda';render();};
+A['appt-add']=el=>openApptModal(null,{date:el.dataset.date,cid:el.dataset.cid});
+A['appt-edit']=el=>openApptModal(el.dataset.id);
+A['appt-cancel']=el=>{const a=DB.appts.find(x=>x.id===el.dataset.id);a.status='cancelled';log('appt','Appointment cancelled: '+a.title,a.contactId);closeModal();commit();toast('Appointment cancelled');};
+A['appt-del']=el=>{const a=DB.appts.find(x=>x.id===el.dataset.id);confirmModal('Delete this appointment?','"'+esc(a.title)+'" on '+fday(a.start)+' will be removed. To keep a record, cancel it instead.','Delete',()=>{DB.appts=DB.appts.filter(x=>x!==a);commit();toast('Appointment deleted');});};
+function openApptModal(id,pre){
+  const a=id?DB.appts.find(x=>x.id===id):null;pre=pre||{};
+  const d=a?{title:a.title,contactId:a.contactId||'',calendarId:a.calendarId,date:ymd(a.start),time:hm(a.start),dur:String(Math.round((a.end-a.start)/60000)),status:a.status,location:a.location||'',notes:a.notes||''}
+    :{title:'',contactId:pre.cid||'',calendarId:'cal1',date:pre.date||ymd(Date.now()),time:'10:00',dur:'60',status:'confirmed',location:'',notes:''};
+  openModal({title:a?'Edit appointment':'New appointment',ok:a?'Save changes':'Create appointment',wide:true,d,
+    body:()=>{const d=UI.modal.d;return `<div class="fgrid">
+      ${fld('Title *',inp('title',d.title,{ph:'e.g. Kitchen estimate: Maria Alvarez',attrs:'data-autofocus'}),err('title'),'full')}
+      ${fld('Contact *',sel('contactId',d.contactId,[['','Select a contact']].concat(contactOpts())),err('contactId'))}${fld('Calendar',sel('calendarId',d.calendarId,DB.calendars.map(c=>[c.id,c.name])))}
+      ${fld('Date *',inp('date',d.date,{type:'date'}),err('date'))}${fld('Start time *',inp('time',d.time,{type:'time'}),err('time'))}
+      ${fld('Duration',sel('dur',d.dur,[['15','15 minutes'],['30','30 minutes'],['45','45 minutes'],['60','1 hour'],['90','1.5 hours'],['120','2 hours']]))}${fld('Status',sel('status',d.status,APPT_STATUS.map(s=>[s,s[0].toUpperCase()+s.slice(1)])))}
+      ${fld('Location',inp('location',d.location,{ph:'Address or "Phone call (simulated)"'}),'','full')}
+      ${fld('Notes',ta('notes',d.notes,{rows:2,ph:'Anything to remember for this appointment'}),'','full')}</div>`;},
+    foot:a?()=>`<button type="button" class="btn bad" data-act="appt-del" data-id="${a.id}" style="margin-right:auto">Delete</button>${a.status!=='cancelled'?`<button type="button" class="btn" data-act="appt-cancel" data-id="${a.id}">Cancel appointment</button>`:''}<button type="button" class="btn" data-act="modal-close">Close</button><button class="btn pri" type="submit">Save changes</button>`:null,
+    onSubmit:()=>{const d=UI.modal.d,e={};
+      if(!d.title.trim())e.title='Enter a title.';if(!d.contactId)e.contactId='Choose a contact.';if(!d.date)e.date='Choose a date.';if(!d.time)e.time='Choose a start time.';
+      let st=0,en=0;if(!Object.keys(e).length){st=mk(d.date,d.time);en=st+(+d.dur)*60000;
+        const clash=DB.appts.find(x=>x.id!==id&&x.calendarId===d.calendarId&&x.status!=='cancelled'&&d.status!=='cancelled'&&x.start<en&&x.end>st);
+        if(clash)e.time='This overlaps "'+clash.title+'" on the same calendar. Pick another time or calendar.';}
+      if(Object.keys(e).length){UI.modal.err=e;return false;}
+      const body={title:d.title.trim(),contactId:d.contactId,calendarId:d.calendarId,start:st,end:en,status:d.status,location:d.location.trim(),notes:d.notes.trim()};
+      if(a){Object.assign(a,body);log('appt','Appointment updated: '+a.title,a.contactId);toast('Appointment saved');}
+      else{const n=Object.assign({id:uid('a')},body);DB.appts.push(n);log('appt','Appointment booked: '+n.title,n.contactId);notify('Appointment booked: '+n.title+' on '+fday(n.start),'calendars');fire('appt_booked',{contactId:n.contactId});toast('Appointment created');}
+      UI.cal.date=st;commit();return true;}});
+  if(!a&&UI.modal){/* title auto-fill hint */}
+}
+
+/* ============ automation ============ */
+const curWf=()=>DB.workflows.find(w=>w.id===UI.wf.id);
+function trigText(t){
+  const b=TRIGGERS[t.type].label;
+  if(t.type==='customer_replied')return b+': '+(t.cfg.keyword?'contains "'+t.cfg.keyword+'"':'any message');
+  if(t.type==='tag_added')return b+': '+(t.cfg.tag||'any tag');
+  if(t.type==='opp_stage')return b+': '+(t.cfg.stage||'any stage');
+  return b;
+}
+function wfProblems(wf){
+  const p=[];if(!wf.steps.length)p.push('Add at least one action.');
+  walkNodes(wf.steps,n=>{const c=n.cfg||{},l=ACTIONS[n.type]?ACTIONS[n.type].label:n.type;
+    if(n.type==='sms'&&!String(c.message).trim())p.push(l+': write a message.');
+    if(n.type==='email'&&(!String(c.subject).trim()||!String(c.body).trim()))p.push(l+': add a subject and body.');
+    if((n.type==='add_tag'||n.type==='remove_tag')&&!String(c.tag).trim())p.push(l+': choose a tag.');
+    if(n.type==='create_task'&&!String(c.title).trim())p.push(l+': enter a task title.');
+    if(n.type==='notify'&&!String(c.message).trim())p.push(l+': write a message.');
+    if(n.type==='move_stage'&&!c.stage)p.push(l+': choose a stage.');});
+  return p;
+}
+function viewAuto(){return UI.wf.id&&curWf()?viewBuilder():viewAutoList();}
+function viewAutoList(){
+  UI.wf.id=null;
+  return `${pageHead('Automation','Build workflows that run when something happens. All actions are simulated.',`<button class="btn pri" data-act="wf-new">${ic('plus',16)}Create workflow</button>`)}
+  <div class="note" style="margin-bottom:14px">${ic('shield',16)}<span>Workflows run inside this page only. Texts and emails are written into the simulated inbox and nothing is delivered. Published workflows run automatically when you add contacts, tags, deals or appointments here.</span></div>
+  <div class="card">${DB.workflows.length?`<div class="tbl-wrap"><table><thead><tr><th>Workflow</th><th class="hide-sm">Trigger</th><th>Steps</th><th class="hide-sm">Runs</th><th>Status</th><th style="width:44px"></th></tr></thead><tbody>
+  ${DB.workflows.map(w=>`<tr class="clk" data-act="wf-open" data-id="${w.id}"><td><b>${esc(w.name)}</b><div class="muted sm">${w.runs[0]?'Last run '+rel(w.runs[0].at):'Not run yet'}</div></td><td class="hide-sm">${esc(trigText(w.trigger))}</td><td class="num">${countNodes(w)}</td><td class="num hide-sm">${w.execs||0}</td>
+    <td data-act="noop"><div class="row">${swt('pub-'+w.id,w.status==='published',`data-chg="wf-pub" data-id="${w.id}" aria-label="Publish ${esc(w.name)}"`)}<span class="sm">${w.status==='published'?'Published':'Draft'}</span></div></td>
+    <td data-act="noop"><button type="button" class="iconbtn" data-act="menu" data-menu="wfrow" data-id="${w.id}" aria-label="Actions for ${esc(w.name)}">${ic('more')}</button></td></tr>`).join('')}</tbody></table></div>`:emptyState('No workflows yet','Create a workflow to automate follow-up.',`<button class="btn pri" data-act="wf-new">Create workflow</button>`)}</div>`;
+}
+MENUS.wfrow=d=>`${mi('Open builder','wf-open',{icon:'edit',d:{id:d.id}})}${mi('Duplicate','wf-dup',{icon:'copy',d:{id:d.id}})}<hr>${mi('Delete','wf-del',{icon:'trash',danger:true,d:{id:d.id}})}`;
+A['wf-open']=el=>{UI.wf.id=el.dataset.id;UI.wf.sel='trigger';UI.wf.panel='config';UI.wf.test=null;UI.wf.tcontact=UI.wf.tcontact||DB.contacts[0].id;render();};
+A['wf-close']=()=>{UI.wf.id=null;UI.wf.test=null;render();};
+A['wf-dup']=el=>{const w=clone(DB.workflows.find(x=>x.id===el.dataset.id));w.id=uid('w');w.name+=' (copy)';w.status='draft';w.runs=[];w.execs=0;walkNodes(w.steps,n=>n.id=uid('n'));DB.workflows.push(w);commit();toast('Workflow duplicated');};
+A['wf-del']=el=>{const w=DB.workflows.find(x=>x.id===el.dataset.id);confirmModal('Delete "'+esc(w.name)+'"?','The workflow and its run history will be removed.','Delete workflow',()=>{DB.workflows=DB.workflows.filter(x=>x!==w);if(UI.wf.id===w.id)UI.wf.id=null;commit();toast('Workflow deleted');});};
+A['wf-new']=()=>openModal({title:'Create workflow',ok:'Create and open',d:{name:'',trigger:'contact_created'},body:()=>`${fld('Workflow name *',inp('name',UI.modal.d.name,{ph:'e.g. New lead follow-up',attrs:'data-autofocus'}),err('name'))}${fld('Trigger',sel('trigger',UI.modal.d.trigger,Object.entries(TRIGGERS).map(([k,v])=>[k,v.label])),'','')}<span class="hint">${esc(TRIGGERS[UI.modal.d.trigger].desc)}. You can change it later.</span>`.replace('data-d="trigger"','data-d="trigger" data-rr="1"'),
+  onSubmit:()=>{const d=UI.modal.d;if(!d.name.trim()){UI.modal.err={name:'Enter a name for the workflow.'};return false;}
+    const w={id:uid('w'),name:d.name.trim(),status:'draft',trigger:{type:d.trigger,cfg:{}},execs:0,runs:[],steps:[]};DB.workflows.push(w);UI.wf.id=w.id;UI.wf.sel='trigger';UI.wf.panel='config';UI.wf.test=null;UI.wf.tcontact=UI.wf.tcontact||DB.contacts[0].id;commit();toast('Workflow created');return true;}});
+CHG['wf-pub']=t=>{
+  const w=DB.workflows.find(x=>x.id===(t.dataset.id||UI.wf.id));if(!w)return;
+  if(t.checked){const p=wfProblems(w);if(p.length){toast('Cannot publish: '+p[0],'bad');render();return;}w.status='published';toast('Workflow published. It now runs on matching events (simulated).');}
+  else{w.status='draft';toast('Workflow set to draft');}
+  commit();
+};
+function nodeEl(id,kind,n,idx,total){
+  const t=UI.wf.test,shown=t?t.results.slice(0,t.shown).map(r=>r.id):[];
+  const done=shown.includes(id),cur=t&&t.shown<t.results.length&&t.results[t.shown]&&t.results[t.shown].id===id;
+  let icon,cls,title,desc;
+  if(kind==='trg'){const w=curWf();icon=TRIGGERS[w.trigger.type].icon;cls='trg';title='Trigger: '+TRIGGERS[w.trigger.type].label;desc=trigText(w.trigger).replace(TRIGGERS[w.trigger.type].label,'').replace(/^: /,'')||TRIGGERS[w.trigger.type].desc;}
+  else{const a=ACTIONS[n.type];icon=a.icon;cls=a.cls;title=a.label;desc=nodeSummary(n);}
+  return `<div class="node ${UI.wf.sel===id?'sel':''} ${done?'done':''} ${cur?'cur':''}" data-act="wf-sel" data-id="${id}" tabindex="0" role="button" aria-label="${esc(title)}"><span class="nic ${cls}">${ic(icon,18)}</span><div style="min-width:0;flex:1"><div class="nt">${esc(title)}</div><div class="nd">${esc(desc)}</div></div>
+    ${kind==='act'?`<div class="node-tools"><button type="button" data-act="wf-up" data-id="${id}" aria-label="Move step up" ${idx===0?'disabled':''}>${ic('up',14)}</button><button type="button" data-act="wf-down" data-id="${id}" aria-label="Move step down" ${idx===total-1?'disabled':''}>${ic('down',14)}</button><button type="button" data-act="wf-rm" data-id="${id}" aria-label="Delete step">${ic('trash',14)}</button></div>`:''}</div>`;
+}
+function viewBuilder(){
+  const wf=curWf(),t=UI.wf.test,steps=wf.steps;
+  const plus=i=>`<div class="fline ${t?'act':''}"><button type="button" class="plus" data-act="wf-add" data-i="${i}" aria-label="Add a step here">${ic('plus',12)}</button></div>`;
+  const flow=`<div class="flow">${nodeEl('trigger','trg')}${plus(0)}${steps.map((n,i)=>nodeEl(n.id,'act',n,i,steps.length)+plus(i+1)).join('')}<span class="endcap">End of workflow</span></div>`;
+  return `<div class="wf-col"><div class="wf-bar"><button class="btn s" data-act="wf-close">${ic('chevL',14)}All workflows</button><input class="input" id="wf-name" data-live="wfname" value="${esc(wf.name)}" style="max-width:300px;font-weight:700" aria-label="Workflow name">
+    <span class="sp"></span><label class="row sm" style="font-weight:700">${swt('pubsw',wf.status==='published',`data-chg="wf-pub" aria-label="Publish workflow"`)}${wf.status==='published'?'Published':'Draft'}</label>
+    <button class="btn pri" data-act="wf-test">${ic('play',14)}Test workflow</button></div>
+    <div class="wf-wrap"><div class="canvas" data-keepscroll="canvas">${flow}</div><aside class="wf-side">${sidePanel(wf)}</aside></div></div>`;
+}
+function sidePanel(wf){
+  const t=UI.wf.test;
+  const tabs=`<div class="tabs"><button class="${UI.wf.panel==='config'?'on':''}" data-act="wf-panel" data-p="config">Step settings</button><button class="${UI.wf.panel==='test'?'on':''}" data-act="wf-panel" data-p="test">Test run</button></div>`;
+  if(UI.wf.panel==='test'){
+    const shown=t?t.results.slice(0,t.shown):[];
+    return tabs+`<div style="padding:14px" class="col"><div class="note info">${ic('info',16)}<span>A test run walks through each step and reports what would happen. Texts and emails are not sent.</span></div>
+      ${fld('Run against contact',sel('tcontact',UI.wf.tcontact,contactOpts()).replace('data-d="tcontact"','data-chg="wf-tc"'))}
+      <label class="chk"><input type="checkbox" data-chg="wf-apply" ${UI.wf.tapply?'checked':''}><span>Apply tags, tasks and messages to the sample data</span></label>
+      <button class="btn pri" data-act="wf-test">${ic('play',14)}${t?'Run again':'Run test'}</button>
+      ${t?`<div class="log" aria-live="polite">${shown.map(r=>`<div class="${r.kind==='logic'?'logic':r.kind==='trg'?'':'ok'}">${esc(r.text)}</div>`).join('')}${t.shown>=t.results.length?`<div class="ok"><b>Test complete.</b> ${t.results.length-1} step(s) simulated${t.applied?', changes applied to sample data':', nothing changed (dry run)'}.</div>`:''}</div>`:`<span class="muted sm">No test run yet.</span>`}
+      ${wf.runs.length?`<h4 style="margin-top:6px">Recent live runs</h4><div class="col" style="gap:6px">${wf.runs.slice(0,4).map(r=>`<div class="sm"><b>${esc(cname(cfind(r.contactId)))}</b> · ${rel(r.at)} · ${r.steps.length-1} steps</div>`).join('')}</div>`:''}</div>`;
+  }
+  const sel_=UI.wf.sel;
+  if(sel_==='trigger'){
+    const tr=wf.trigger,c=tr.cfg;
+    return tabs+`<div style="padding:14px" class="col"><h3>Trigger</h3>${fld('When this happens',`<select class="select" id="wf-trig" data-chg="wf-trig">${Object.entries(TRIGGERS).map(([k,v])=>`<option value="${k}" ${tr.type===k?'selected':''}>${v.label}</option>`).join('')}</select>`)}
+      <span class="hint">${esc(TRIGGERS[tr.type].desc)}.</span>
+      ${tr.type==='tag_added'?fld('Only when this tag is added',`<input class="input" id="wf-tag" data-live="wfcfg" data-k="tag" value="${esc(c.tag||'')}" placeholder="Leave empty for any tag" list="taglist"><datalist id="taglist">${allTags().map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`):''}
+      ${tr.type==='opp_stage'?fld('Only when moved to',`<select class="select" id="wf-stage" data-chg="wfcfg" data-k="stage"><option value="">Any stage</option>${DB.pipelines[0].stages.map(s=>`<option ${c.stage===s.name?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`):''}
+      ${tr.type==='customer_replied'?fld('Only when the message contains',`<input class="input" id="wf-keyword" data-live="wfcfg" data-k="keyword" value="${esc(c.keyword||'')}" placeholder="e.g. call me">`)+'<span class="hint">Leave empty for any message. Separate several phrases with commas. Capital letters are ignored.</span>':''}
+      <div class="muted sm">Published workflows run automatically when you do this in the simulator.</div></div>`;
+  }
+  const r=findNode(wf,sel_);if(!r)return tabs+`<div class="empty">Select a step to edit it.</div>`;
+  const n=r.node,c=n.cfg,a=ACTIONS[n.type];
+  const ci=(k,o={})=>`<input class="input" id="wf-${k}" data-live="wfcfg" data-k="${k}" value="${esc(c[k]==null?'':c[k])}" type="${o.type||'text'}" ${o.attrs||''} placeholder="${esc(o.ph||'')}">`;
+  const merge=`<span class="hint">Merge fields: {{contact.first_name}}, {{contact.last_name}}, {{business.name}}</span>`;
+  let form='';
+  if(n.type==='sms')form=fld('Message',`<textarea class="textarea" id="wf-message" data-live="wfcfg" data-k="message" rows="5">${esc(c.message)}</textarea>`)+merge+`<div class="note">${ic('info',16)}<span>Simulated. A test run only logs the text.</span></div>`;
+  if(n.type==='email')form=fld('Subject',ci('subject'))+fld('Body',`<textarea class="textarea" id="wf-body" data-live="wfcfg" data-k="body" rows="6">${esc(c.body)}</textarea>`)+merge+`<div class="note">${ic('info',16)}<span>Simulated. No email is sent.</span></div>`;
+  if(n.type==='add_tag'||n.type==='remove_tag')form=fld('Tag',`<input class="input" id="wf-tag" data-live="wfcfg" data-k="tag" value="${esc(c.tag||'')}" list="taglist" placeholder="e.g. hot-lead"><datalist id="taglist">${allTags().map(x=>`<option value="${esc(x)}">`).join('')}</datalist>`);
+  if(n.type==='create_task')form=fld('Task title',ci('title'))+merge+fld('Due in (days)',ci('dueDays',{type:'number',attrs:'min="0"'}));
+  if(n.type==='wait')form=`<div class="fgrid">${fld('Wait for',ci('amount',{type:'number',attrs:'min="1"'}))}${fld('Unit',`<select class="select" id="wf-unit" data-chg="wfcfg" data-k="unit">${['minutes','hours','days'].map(u=>`<option ${c.unit===u?'selected':''}>${u}</option>`).join('')}</select>`)}</div><span class="hint">Waits are skipped in test runs.</span>`;
+  if(n.type==='notify')form=fld('Notification text',`<textarea class="textarea" id="wf-message" data-live="wfcfg" data-k="message" rows="3">${esc(c.message)}</textarea>`)+merge;
+  if(n.type==='move_stage')form=fld('Move the contact\'s open deal to',`<select class="select" id="wf-stage" data-chg="wfcfg" data-k="stage"><option value="">Select a stage</option>${DB.pipelines[0].stages.map(s=>`<option ${c.stage===s.name?'selected':''}>${esc(s.name)}</option>`).join('')}</select>`);
+  return tabs+`<div style="padding:14px" class="col"><div class="row"><span class="nic ${a.cls}">${ic(a.icon,18)}</span><h3 class="sp">${a.label}</h3><button class="btn s bad" data-act="wf-rm" data-id="${n.id}">${ic('trash',14)}Remove</button></div>${form}</div>`;
+}
+LIVE.wfname=t=>{const w=curWf();w.name=t.value;save();const c=$('.crumbs');if(c)c.innerHTML=crumbsHtml();};
+LIVE.wfcfg=t=>{const wf=curWf();const cfg=UI.wf.sel==='trigger'?wf.trigger.cfg:findNode(wf,UI.wf.sel).node.cfg;const v=t.type==='number'?(t.value===''?'':+t.value):t.value;cfg[t.dataset.k]=v;save();render();};
+CHG.wfcfg=LIVE.wfcfg;
+CHG['wf-trig']=t=>{const wf=curWf();wf.trigger={type:t.value,cfg:{}};commit();};
+CHG['wf-tc']=t=>{UI.wf.tcontact=t.value;render();};
+CHG['wf-apply']=t=>{UI.wf.tapply=t.checked;render();};
+A['wf-sel']=el=>{UI.wf.sel=el.dataset.id;UI.wf.panel='config';render();};
+A['wf-panel']=el=>{UI.wf.panel=el.dataset.p;render();};
+A['wf-add']=el=>{const i=+el.dataset.i;openModal({title:'Add an action',ok:'',d:{i},foot:()=>`<button type="button" class="btn" data-act="modal-close">Cancel</button>`,
+  body:()=>`<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">${Object.entries(ACTIONS).map(([k,a])=>`<button type="button" class="node" style="width:auto;box-shadow:none" data-act="wf-pick" data-t="${k}"><span class="nic ${a.cls}">${ic(a.icon,18)}</span><span><span class="nt">${a.label}</span><span class="nd" style="display:block">${a.desc}</span></span></button>`).join('')}</div>`,onSubmit:()=>true});};
+A['wf-pick']=el=>{const wf=curWf(),i=UI.modal.d.i,n={id:uid('n'),type:el.dataset.t,cfg:defaultCfg(el.dataset.t)};wf.steps.splice(i,0,n);UI.wf.sel=n.id;UI.wf.panel='config';UI.wf.test=null;closeModal();commit();toast('Step added');};
+function moveStep(id,d){const wf=curWf(),r=findNode(wf,id);const j=r.idx+d;if(j<0||j>=r.arr.length)return;const x=r.arr[r.idx];r.arr[r.idx]=r.arr[j];r.arr[j]=x;UI.wf.test=null;commit();}
+A['wf-up']=el=>moveStep(el.dataset.id,-1);
+A['wf-down']=el=>moveStep(el.dataset.id,1);
+A['wf-rm']=el=>{const wf=curWf(),r=findNode(wf,el.dataset.id);if(!r)return;r.arr.splice(r.idx,1);if(UI.wf.sel===el.dataset.id)UI.wf.sel='trigger';UI.wf.test=null;if(wf.status==='published'&&wfProblems(wf).length)wf.status='draft';commit();toast('Step removed');};
+A['wf-test']=()=>{
+  const wf=curWf();if(!wf)return;
+  if(!wf.steps.length){UI.wf.panel='test';render();toast('Add at least one action before testing','bad');return;}
+  const c=cfind(UI.wf.tcontact)||DB.contacts[0];if(!c){toast('Add a contact to test with','bad');return;}
+  UI.wf.tcontact=c.id;
+  const results=runWorkflow(wf,c,UI.wf.tapply);const tk={results,shown:0,applied:UI.wf.tapply};UI.wf.test=tk;UI.wf.panel='test';
+  if(UI.wf.tapply){log('flow','Test run of "'+wf.name+'" applied to '+cname(c)+' (simulated)',c.id);save();}
+  render();
+  const tick=()=>{if(UI.wf.test!==tk)return;tk.shown++;render();if(tk.shown<results.length)setTimeout(tick,420);else toast('Test run complete');};
+  setTimeout(tick,300);
+};
+document.addEventListener('keydown',e=>{const t=e.target;if((e.key==='Enter'||e.key===' ')&&t.matches&&t.matches('[role="button"][data-act]')&&!/^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(t.tagName)){e.preventDefault();t.click();}});
+
+/* ============ boot ============ */
+DB=load()||seed();
+if(!DB.migr)DB.migr=[];
+if(!DB.migr.includes('w4')){if(!DB.workflows.some(w=>w.id==='w4'))DB.workflows.push({id:'w4',name:'Call Request → Create Task',status:'published',trigger:{type:'customer_replied',cfg:{keyword:'call me'}},execs:0,runs:[],steps:[{id:'n20',type:'create_task',cfg:{title:'Call {{contact.first_name}} {{contact.last_name}} back (asked for a call)',dueDays:0}},{id:'n21',type:'notify',cfg:{message:'{{contact.first_name}} {{contact.last_name}} asked for a call. Task created.'}}]});DB.migr.push('w4');save();}
+applyTheme();
+render();
+
+</script>
+
+</body></html>
