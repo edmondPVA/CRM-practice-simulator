@@ -846,7 +846,21 @@ function trigMatch(t,p){
   if(t.type==='opp_stage')return !c.stage||c.stage===p.stage;
   return true;
 }
+/* n8n bridge: sends each CRM event to a webhook URL that the user saves in this browser (empty by default) */
+const N8N_KEY='crm-n8n-url';
+function n8nUrl(){try{return localStorage.getItem(N8N_KEY)||'';}catch(e){return '';}}
+function sendToN8n(type,p){
+  const url=n8nUrl();if(!url)return;
+  const c=cfind(p.contactId);
+  const body={event:type,sentAt:new Date().toISOString(),
+    contact:c?{firstName:c.firstName,lastName:c.lastName,email:c.email,phone:c.phone,company:c.company,source:c.source,tags:c.tags}:null,
+    details:p};
+  fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(r=>toast(r.ok?'Sent to n8n: '+type:'n8n replied with an error ('+r.status+')',r.ok?'':'bad'))
+    .catch(()=>toast('Could not reach n8n. Check the webhook URL and that n8n is running.','bad'));
+}
 function fire(type,p){
+  sendToN8n(type,p);
   const names=[];
   DB.workflows.filter(w=>w.status==='published'&&w.trigger.type===type&&trigMatch(w.trigger,p)).forEach(w=>{
     const c=cfind(p.contactId);const steps=runWorkflow(w,c,true);
@@ -957,7 +971,7 @@ function applyTheme(){const t=DB.prefs.theme,r=document.documentElement;if(t==='
 
 /* ============ shell menus ============ */
 MENUS.acct=()=>`<div style="padding:8px 10px"><b>${esc(DB.biz.name)}</b><div class="muted sm">${esc(DB.biz.email)}</div></div><hr>
-  ${mi('About this simulator','about',{icon:'shield'})}<hr>${mi('Reset sample data','reset',{icon:'refresh',danger:true})}`;
+  ${mi('About this simulator','about',{icon:'shield'})}${mi('n8n webhook'+(n8nUrl()?' (on)':''),'n8n-url',{icon:'refresh'})}<hr>${mi('Reset sample data','reset',{icon:'refresh',danger:true})}`;
 MENUS.user=()=>{const u=me(),t=DB.prefs.theme;
   return `<div style="padding:8px 10px"><b>${esc(u.name)}</b><div class="muted sm">${esc(u.title)} · ${esc(u.email)}</div></div><hr>
   <h5>Theme</h5>
@@ -988,6 +1002,12 @@ A['about']=()=>openModal({title:'About this simulator',ok:'Got it',wide:true,bod
     <div class="card card-b"><h4 style="margin-bottom:8px">Simulated only</h4><ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px"><li>SMS, email and phone calls are never sent or placed</li><li>Calendar sync and other integrations are not connected</li><li>Data stays in this browser only and is not shared with anyone</li></ul></div>
   </div>
   <p class="muted sm">Everything here is made-up sample data for a fictional remodeling company. Use "Reset sample data" in the account menu to start over.</p>`,onSubmit:()=>true});
+A['n8n-url']=()=>openModal({title:'n8n webhook',ok:'Save',d:{url:n8nUrl()},
+  body:()=>`<p class="muted sm">Paste the Webhook URL from your n8n workflow. CRM events (new contact, tag added, deal stage change, appointment booked, customer reply) are then sent to it as JSON. The URL is saved only in this browser. Leave it empty to turn this off.</p>${fld('Webhook URL',`<input class="input" data-d="url" value="${esc(UI.modal.d.url)}" placeholder="http://localhost:5678/webhook-test/..." data-autofocus autocomplete="off">`,err('url'))}`,
+  onSubmit:()=>{const u=(UI.modal.d.url||'').trim();
+    if(u&&!/^https?:\/\//i.test(u)){UI.modal.err={url:'Enter a full URL starting with http:// or https://'};return false;}
+    try{if(u)localStorage.setItem(N8N_KEY,u);else localStorage.removeItem(N8N_KEY);}catch(e){}
+    toast(u?'n8n webhook saved':'n8n webhook turned off');return true;}});
 A['gs-go']=el=>{
   const t=el.dataset.t,id=el.dataset.id;UI.gs={q:'',open:false};
   if(t==='contact')go('contacts',{contactId:id});
