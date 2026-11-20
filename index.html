@@ -1323,7 +1323,7 @@ function moveOpp(id,sid){
   const was=oppStatus(o);o.stageId=sid;o.stageSince=Date.now();o.ord=Math.max(-1,...DB.opps.filter(x=>x.stageId===sid).map(x=>x.ord||0))+1;
   const n=stageName(o.pipelineId,sid);log('opp',o.name+' moved to '+n+(oppStatus(o)==='won'?' ('+money(o.value)+')':''),o.contactId);
   if(oppStatus(o)==='won')notify('Deal won: '+o.name+' ('+money(o.value)+')','opportunities');
-  fire('opp_stage',{contactId:o.contactId,stage:n});commit();toast(o.name+' moved to '+n);
+  fire('opp_stage',{contactId:o.contactId,stage:n,dealName:o.name,dealValue:o.value});commit();toast(o.name+' moved to '+n);
 }
 function openOppModal(id,pre){
   const o=id?DB.opps.find(x=>x.id===id):null;pre=pre||{};
